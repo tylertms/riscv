@@ -51,6 +51,43 @@ wire [31:0] write_back_data = 32'b0;
 wire write_back_enable = 0;
 // ---------------------------------------------
 
+// ALU
+// ---------------------------------------------
+
+// funct3 | operation
+// -------------------------
+// 3'b000 | ADD / SUB
+// 3'b001 | lshift (<<)
+// 3'b010 | signed comp. (<)
+// 3'b011 | usign. comp. (<)
+// 3'b100 | XOR (^)
+// 3'b101 | rshift (>>)
+// 3'b110 | OR (|)
+// 3'b111 | AND (&)
+
+wire [31:0] alu_a = rs1;
+wire [31:0] alu_b = is_alu_reg ? rs2 : imm_i;
+reg [31:0] alu_out;
+
+wire [4:0] shift_amount = is_alu_reg ? rs2[4:0] : instr[24:20];
+
+always @(*) begin
+  case (funct3)
+    3'b000: alu_out = (funct7[5] & instr[5]) ? (alu_a - alu_b) : (alu_a + alu_b);
+    3'b001: alu_out = (alu_a << shift_amount);
+    3'b010: alu_out = ($signed(alu_a) < $signed(alu_b));
+    3'b011: alu_out = (alu_a < alu_b);
+    3'b100: alu_out = (alu_a ^ alu_b);
+    3'b101: alu_out = (funct7[5] ? ($signed(alu_a) >>> shift_amount) : (alu_a >> shift_amount));
+    3'b110: alu_out = (alu_a | alu_b);
+    3'b111: alu_out = (alu_a & alu_b);
+  endcase
+end
+
+assign write_back_data = alu_out;
+assign write_back_enable = (state == EXECUTE && (is_alu_reg || is_alu_imm));
+// ---------------------------------------------
+
 // State Machine
 // ---------------------------------------------
 localparam FETCH_INSTR = 0, FETCH_REGS = 1, EXECUTE = 2;
@@ -60,7 +97,7 @@ always @(posedge CLK) begin
   if (write_back_enable && rd_id != 0)
     registers[rd_id] <= write_back_data;
 
-  case(state)
+  case (state)
     FETCH_INSTR: begin
       instr <= mem[pc];
       state <= FETCH_REGS;
