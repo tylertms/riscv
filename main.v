@@ -27,9 +27,9 @@ wire is_store   = (instr[6:0] == 7'b0100011); // mem[reg + imm] <= reg
 wire is_system  = (instr[6:0] == 7'b1110011); // ...
 
 // Decode source/destination registers
-wire [4:0] rs1_id = instr[19:15];
-wire [4:0] rs2_id = instr[24:20];
-wire [4:0] rd_id  = instr[11:7];
+wire [3:0] rs1_id = instr[18:15];
+wire [3:0] rs2_id = instr[23:20];
+wire [3:0] rd_id  = instr[10:7];
 
 // Decode instruction funct within instruction types
 wire [2:0] funct3 = instr[14:12];
