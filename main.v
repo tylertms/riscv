@@ -15,14 +15,9 @@ reg [31:0] pc;
 reg [31:0] instr;
 
 `include "riscv_assembly.vh"
-integer L0_ = 8;
-
 initial begin
-  ADD(x1,x0,x0);
-  ADDI(x2,x0,10);
-  Label(L0_); 
-  ADDI(x1,x1,1); 
-  BNE(x1, x2, LabelRef(L0_));
+  LUI(x1, 32'b11111111111111111111111111110000);
+  ORI(x1, x1, 32'b11111111111111111111111111110101);
   EBREAK();
 
   endASM();
@@ -113,8 +108,13 @@ always @(*) begin
   endcase
 end
 
-assign write_back_data = (is_jal || is_jalr) ? (pc + 4) : alu_out;
-assign write_back_enable = (state == EXECUTE && (is_alu_reg || is_alu_imm || is_jal || is_jalr));
+assign write_back_data = (is_jal || is_jalr) ? (pc + 4) : 
+  (is_lui) ? imm_u :
+  (is_auipc) ? (pc + imm_u) :
+  alu_out;
+
+assign write_back_enable = (state == EXECUTE && 
+  (is_alu_reg || is_alu_imm || is_jal || is_jalr || is_lui || is_auipc));
 // ---------------------------------------------
 
 // State Machine
