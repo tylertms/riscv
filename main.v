@@ -1,8 +1,33 @@
 `default_nettype none
 
-module top (
+module system (
   input CLK, SW1,
   output LED1, LED2, LED3, LED4
+);
+
+`include "riscv_assembly.vh"
+integer L0_ = 8;
+initial begin
+ADD(x1,x0,x0);
+ADDI(x2,x0,10);
+Label(L0_); 
+ADDI(x1,x1,1); 
+BNE(x1, x2, LabelRef(L0_));
+EBREAK();
+endASM();
+end
+
+wire cpu_clk;
+reg [31:0] pc;
+reg [31:0] mem [0:255];
+
+assign {LED1, LED2, LED3, LED4} = registers[x1][3:0];
+
+clock_div #(.WIDTH(32)) div (
+  .clk_in(CLK),
+  .reset(SW1),
+  .clk_out(cpu_clk),
+  .div_num(24999999 >> 3)
 );
 
 // Instruction Decoder
@@ -10,20 +35,7 @@ module top (
 // Defined on page 130 of:
 // https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf
 
-reg [31:0] mem [0:255];
-reg [31:0] pc;
 reg [31:0] instr;
-
-`include "riscv_assembly.vh"
-initial begin
-  LUI(x1, 32'b11111111111111111111111111110000);
-  ORI(x1, x1, 32'b11111111111111111111111111110101);
-  EBREAK();
-
-  endASM();
-end
-
-assign {LED1, LED2, LED3, LED4} = registers[x1][3:0];
 
 // Decode instruction type
 wire is_alu_reg = (instr[6:0] == 7'b0110011); // reg <= reg op reg
@@ -77,44 +89,65 @@ wire write_back_enable;
 // 3'b111 | AND (&)
 
 wire [31:0] alu_a = rs1;
-wire [31:0] alu_b = is_alu_reg ? rs2 : imm_i;
-reg [31:0] alu_out;
+wire [31:0] alu_b = (is_alu_reg | is_branch) ? rs2 : imm_i;
 
 wire [4:0] shift_amount = is_alu_reg ? rs2[4:0] : instr[24:20];
 
+wire [31:0] alu_plus = alu_a + alu_b;
+wire [32:0] alu_minus = {1'b0, alu_a} - {1'b0, alu_b};
+
+wire equal = (alu_minus[31:0] == 0);
+wire less_than = (alu_a[31] ^ alu_b[31]) ? alu_a[31] : alu_minus[32];
+wire less_than_unsigned = alu_minus[32];
+
+function [31:0] flip32;
+  input [31:0] x;
+  flip32 = {x[00], x[01], x[02], x[03], x[04], x[05], x[06], x[07], 
+            x[08], x[09], x[10], x[11], x[12], x[13], x[14], x[15], 
+            x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
+            x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
+endfunction
+
+wire [31:0] shifter_in = (funct3 == 3'b001) ? flip32(alu_a) : alu_a;
+wire [31:0] shifter = $signed({instr[30] & alu_a[31], shifter_in}) >>> alu_b[4:0];
+wire [31:0] leftshift = flip32(shifter);
+
+reg [31:0] alu_out;
 always @(*) begin
-  case (funct3)
-    3'b000: alu_out = ((is_alu_reg && funct7[5]) ? (alu_a - alu_b) : (alu_a + alu_b));
-    3'b001: alu_out = (alu_a << shift_amount);
-    3'b010: alu_out = {31'b0, ($signed(alu_a) < $signed(alu_b))};
-    3'b011: alu_out = {31'b0, (alu_a < alu_b)};
+  case(funct3)
+    3'b000: alu_out = (funct7[5] & instr[5]) ? alu_minus[31:0] : alu_plus;
+    3'b001: alu_out = leftshift;
+    3'b010: alu_out = {31'b0, less_than};
+    3'b011: alu_out = {31'b0, less_than_unsigned};
     3'b100: alu_out = (alu_a ^ alu_b);
-    3'b101: alu_out = (funct7[5] ? ($signed(alu_a) >>> shift_amount) : (alu_a >> shift_amount));
+    3'b101: alu_out = shifter; 
     3'b110: alu_out = (alu_a | alu_b);
-    3'b111: alu_out = (alu_a & alu_b);
+    3'b111: alu_out = (alu_a & alu_b);	
   endcase
 end
 
 reg take_branch;
 always @(*) begin
   case (funct3)
-    3'b000: take_branch = (rs1 == rs2);
-    3'b001: take_branch = (rs1 != rs2);
-    3'b100: take_branch = ($signed(rs1) < $signed(rs2));
-    3'b101: take_branch = ($signed(rs1) >= $signed(rs2));
-    3'b110: take_branch = (rs1 < rs2);
-    3'b111: take_branch = (rs1 >= rs2);
+    3'b000: take_branch = equal;
+    3'b001: take_branch = !equal;
+    3'b100: take_branch = less_than;
+    3'b101: take_branch = !less_than;
+    3'b110: take_branch = less_than_unsigned;
+    3'b111: take_branch = !less_than_unsigned;
     default: take_branch = 1'b0;
   endcase
 end
 
-assign write_back_data = (is_jal || is_jalr) ? (pc + 4) : 
-  (is_lui) ? imm_u :
-  (is_auipc) ? (pc + imm_u) :
+wire [31:0] pc_plus_imm = pc + (instr[3] ? imm_j[31:0] : instr[4] ? imm_u[31:0] : imm_b[31:0]);
+wire [31:0] pc_plus_4 = pc + 4;
+
+assign write_back_data = (is_jal || is_jalr) ? pc_plus_4 : 
+  is_lui ? imm_u :
+  is_auipc ? pc_plus_imm :
   alu_out;
 
-assign write_back_enable = (state == EXECUTE && 
-  (is_alu_reg || is_alu_imm || is_jal || is_jalr || is_lui || is_auipc));
+assign write_back_enable = (state == EXECUTE && !is_branch);
 // ---------------------------------------------
 
 // State Machine
@@ -122,15 +155,13 @@ assign write_back_enable = (state == EXECUTE &&
 localparam FETCH_INSTR = 0, FETCH_REGS = 1, EXECUTE = 2;
 reg [1:0] state = FETCH_INSTR;
 
-reg div_clk;
-clock_div #(.WIDTH(32))
-div (.reset(SW1), .clk_in(CLK), .div_num(24999999 >> 4), .clk_out(div_clk));
-
-always @(posedge div_clk or posedge SW1) begin
+always @(posedge cpu_clk or posedge SW1) begin
   if (SW1) begin
     pc <= 0;
     state <= FETCH_INSTR;
-  end else begin
+  end 
+  
+  else begin
     if (write_back_enable && rd_id != 0) begin
       registers[rd_id] <= write_back_data;
     end
@@ -141,24 +172,22 @@ always @(posedge div_clk or posedge SW1) begin
         state <= FETCH_REGS;
       end
       FETCH_REGS: begin
-        rs1 <= (rs1_id == 5'd0) ? 32'd0 : registers[rs1_id];
-        rs2 <= (rs2_id == 5'd0) ? 32'd0 : registers[rs2_id];
+        rs1 <= (rs1_id == 5'd0) ? 32'b0 : registers[rs1_id];
+        rs2 <= (rs2_id == 5'd0) ? 32'b0 : registers[rs2_id];
         state <= EXECUTE;
       end
       EXECUTE: begin
-        if (!is_system)
-          pc <= next_pc;
+        if (!is_system) pc <= next_pc;
         state <= FETCH_INSTR;
       end
     endcase
-    end
+  end
 end
 
-wire [31:0] next_pc = 
-  (is_branch && take_branch) ? (pc + imm_b) :
-  (is_jal) ? (pc + imm_j) : 
-  (is_jalr) ? (rs1 + imm_i) : 
-  (pc + 4);
+wire [31:0] next_pc = ((is_branch && take_branch) || is_jal) ? pc_plus_imm :
+  is_jalr ? {alu_plus[31:1], 1'b0} :
+  pc_plus_4;
 // ---------------------------------------------
+
 
 endmodule
