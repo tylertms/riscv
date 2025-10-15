@@ -14,6 +14,19 @@ reg [31:0] mem [0:255];
 reg [31:0] pc;
 reg [31:0] instr;
 
+`include "riscv_assembly.vh"
+integer L0_=4;
+initial begin
+  ADD(x1,x0,x0);
+  Label(L0_);
+  ADDI(x1,x1,1);
+  JAL(x0,LabelRef(L0_));
+  EBREAK();
+  endASM();
+end
+
+assign {LED1, LED2, LED3, LED4} = registers[x1][3:0];
+
 // Decode instruction type
 wire is_alu_reg = (instr[6:0] == 7'b0110011); // reg <= reg op reg
 wire is_alu_imm = (instr[6:0] == 7'b0010011); // reg <= reg op imm
@@ -54,7 +67,6 @@ wire write_back_enable;
 
 // ALU
 // ---------------------------------------------
-
 // funct3 | operation
 // -------------------------
 // 3'b000 | ADD / SUB
@@ -85,8 +97,8 @@ always @(*) begin
   endcase
 end
 
-assign write_back_data = alu_out;
-assign write_back_enable = (state == EXECUTE && (is_alu_reg || is_alu_imm));
+assign write_back_data = (is_jal || is_jalr) ? (pc + 4) : alu_out;
+assign write_back_enable = (state == EXECUTE && (is_alu_reg || is_alu_imm || is_jal || is_jalr));
 // ---------------------------------------------
 
 // State Machine
@@ -94,26 +106,39 @@ assign write_back_enable = (state == EXECUTE && (is_alu_reg || is_alu_imm));
 localparam FETCH_INSTR = 0, FETCH_REGS = 1, EXECUTE = 2;
 reg [1:0] state = FETCH_INSTR;
 
-always @(posedge CLK) begin
-  if (write_back_enable && rd_id != 0)
-    registers[rd_id] <= write_back_data;
+reg div_clk;
+clock_div #(.WIDTH(32))
+div (.reset(SW1), .clk_in(CLK), .div_num(24999999 >> 4), .clk_out(div_clk));
 
-  case (state)
-    FETCH_INSTR: begin
-      instr <= mem[pc];
-      state <= FETCH_REGS;
+always @(posedge div_clk or posedge SW1) begin
+  if (SW1) begin
+    pc <= 0;
+    state <= FETCH_INSTR;
+  end else begin
+    if (write_back_enable && rd_id != 0) begin
+      registers[rd_id] <= write_back_data;
     end
-    FETCH_REGS: begin
-      rs1 <= registers[rs1_id];
-      rs2 <= registers[rs2_id];
-      state <= EXECUTE;
+
+    case (state)
+      FETCH_INSTR: begin
+        instr <= mem[pc[31:2]];
+        state <= FETCH_REGS;
+      end
+      FETCH_REGS: begin
+        rs1 <= (rs1_id == 5'd0) ? 32'd0 : registers[rs1_id];
+        rs2 <= (rs2_id == 5'd0) ? 32'd0 : registers[rs2_id];
+        state <= EXECUTE;
+      end
+      EXECUTE: begin
+        if (!is_system)
+          pc <= next_pc;
+        state <= FETCH_INSTR;
+      end
+    endcase
     end
-    EXECUTE: begin
-      pc <= pc + 1;
-      state <= FETCH_INSTR;
-    end
-  endcase
 end
+
+wire [31:0] next_pc = is_jal ? (pc + imm_j) : (is_jalr ? (rs1 + imm_i) : (pc + 4));
 // ---------------------------------------------
 
 endmodule
