@@ -5,30 +5,20 @@ module system (
   output LED1, LED2, LED3, LED4
 );
 
-`include "riscv_assembly.vh"
-integer L0_ = 8;
-initial begin
-ADD(x1,x0,x0);
-ADDI(x2,x0,10);
-Label(L0_); 
-ADDI(x1,x1,1); 
-BNE(x1, x2, LabelRef(L0_));
-EBREAK();
-endASM();
-end
-
-wire cpu_clk;
 reg [31:0] pc;
 reg [31:0] mem [0:255];
 
-assign {LED1, LED2, LED3, LED4} = registers[x1][3:0];
+wire [31:0] mem_addr;
+reg [31:0] mem_rdata;
+wire mem_rstrb;
 
-clock_div #(.WIDTH(32)) div (
-  .clk_in(CLK),
-  .reset(SW1),
-  .clk_out(cpu_clk),
-  .div_num(24999999 >> 3)
-);
+always @(posedge CLK) begin
+  if(mem_rstrb) begin
+      mem_rdata <= mem[mem_addr[31:2]];
+  end
+end
+
+// assign {LED1, LED2, LED3, LED4} = registers[x10][3:0];
 
 // Instruction Decoder
 // ---------------------------------------------
@@ -64,8 +54,8 @@ wire [31:0] imm_i = {{20{instr[31]}}, instr[31:20]};
 wire [31:0] imm_s = {{20{instr[31]}}, instr[31:25], instr[11:7]};
 wire [31:0] imm_b = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
 wire [31:0] imm_j = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
-
 // ---------------------------------------------
+
 
 // Register Bank
 // ---------------------------------------------
@@ -74,6 +64,7 @@ reg [31:0] rs1, rs2;
 wire [31:0] write_back_data;
 wire write_back_enable;
 // ---------------------------------------------
+
 
 // ALU
 // ---------------------------------------------
@@ -125,7 +116,11 @@ always @(*) begin
     3'b111: alu_out = (alu_a & alu_b);	
   endcase
 end
+// ---------------------------------------------
 
+
+// Branch
+// ---------------------------------------------
 reg take_branch;
 always @(*) begin
   case (funct3)
@@ -138,24 +133,55 @@ always @(*) begin
     default: take_branch = 1'b0;
   endcase
 end
+// ---------------------------------------------
 
+// PC / Next State
+// ---------------------------------------------
 wire [31:0] pc_plus_imm = pc + (instr[3] ? imm_j[31:0] : instr[4] ? imm_u[31:0] : imm_b[31:0]);
 wire [31:0] pc_plus_4 = pc + 4;
 
-assign write_back_data = (is_jal || is_jalr) ? pc_plus_4 : 
-  is_lui ? imm_u :
+assign write_back_data = (is_jal || is_jalr) ? pc_plus_4 :
+  is_lui   ? imm_u :
   is_auipc ? pc_plus_imm :
+  is_load  ? load_data :
   alu_out;
 
-assign write_back_enable = (state == EXECUTE && !is_branch);
+assign write_back_enable = ((state == EXECUTE) && !is_branch && !is_store && !is_load) || (state == WAIT_DATA);
+
+wire [31:0] next_pc = ((is_branch && take_branch) || is_jal) ? pc_plus_imm :
+  is_jalr ? {alu_plus[31:1], 1'b0} :
+  pc_plus_4;
 // ---------------------------------------------
 
-// State Machine
-// ---------------------------------------------
-localparam FETCH_INSTR = 0, FETCH_REGS = 1, EXECUTE = 2;
-reg [1:0] state = FETCH_INSTR;
 
-always @(posedge cpu_clk or posedge SW1) begin
+// Load / Store
+// ---------------------------------------------
+wire [31:0] load_store_addr = rs1 + (is_store ? imm_s : imm_i);
+wire [15:0] load_half_word = load_store_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
+wire [7:0] load_byte = load_store_addr[0] ? load_half_word[15:8] : load_half_word[7:0];
+
+wire load_sign = !funct3[2] & (mem_byte_access ? load_byte[7] : load_half_word[15]);
+wire mem_byte_access = (funct3[1:0] == 2'b00);
+wire mem_half_word_access = (funct3[1:0] == 2'b01);
+
+wire [31:0] load_data = 
+  mem_byte_access ? {{24{load_sign}}, load_byte} :
+  mem_half_word_access ? {{16{load_sign}}, load_half_word} :
+  mem_rdata;
+// ---------------------------------------------
+
+
+// Processor State
+// ---------------------------------------------
+localparam FETCH_INSTR = 0;
+localparam WAIT_INSTR  = 1;
+localparam FETCH_REGS  = 2;
+localparam EXECUTE     = 3;
+localparam LOAD        = 4;
+localparam WAIT_DATA   = 5;
+reg [2:0] state = FETCH_INSTR;
+
+always @(posedge CLK or posedge SW1) begin
   if (SW1) begin
     pc <= 0;
     state <= FETCH_INSTR;
@@ -168,7 +194,10 @@ always @(posedge cpu_clk or posedge SW1) begin
 
     case (state)
       FETCH_INSTR: begin
-        instr <= mem[pc[31:2]];
+        state <= WAIT_INSTR;
+      end
+      WAIT_INSTR: begin
+        instr <= mem_rdata;
         state <= FETCH_REGS;
       end
       FETCH_REGS: begin
@@ -178,15 +207,20 @@ always @(posedge cpu_clk or posedge SW1) begin
       end
       EXECUTE: begin
         if (!is_system) pc <= next_pc;
+        state <= is_load ? LOAD : FETCH_INSTR;
+      end
+      LOAD: begin
+        state <= WAIT_DATA;
+      end
+      WAIT_DATA: begin
         state <= FETCH_INSTR;
       end
     endcase
   end
 end
 
-wire [31:0] next_pc = ((is_branch && take_branch) || is_jal) ? pc_plus_imm :
-  is_jalr ? {alu_plus[31:1], 1'b0} :
-  pc_plus_4;
+assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ? pc : load_store_addr;
+assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
 // ---------------------------------------------
 
 
