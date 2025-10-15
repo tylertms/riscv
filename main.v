@@ -15,13 +15,16 @@ reg [31:0] pc;
 reg [31:0] instr;
 
 `include "riscv_assembly.vh"
-integer L0_=4;
+integer L0_ = 8;
+
 initial begin
   ADD(x1,x0,x0);
-  Label(L0_);
-  ADDI(x1,x1,1);
-  JAL(x0,LabelRef(L0_));
+  ADDI(x2,x0,10);
+  Label(L0_); 
+  ADDI(x1,x1,1); 
+  BNE(x1, x2, LabelRef(L0_));
   EBREAK();
+
   endASM();
 end
 
@@ -97,6 +100,19 @@ always @(*) begin
   endcase
 end
 
+reg take_branch;
+always @(*) begin
+  case (funct3)
+    3'b000: take_branch = (rs1 == rs2);
+    3'b001: take_branch = (rs1 != rs2);
+    3'b100: take_branch = ($signed(rs1) < $signed(rs2));
+    3'b101: take_branch = ($signed(rs1) >= $signed(rs2));
+    3'b110: take_branch = (rs1 < rs2);
+    3'b111: take_branch = (rs1 >= rs2);
+    default: take_branch = 1'b0;
+  endcase
+end
+
 assign write_back_data = (is_jal || is_jalr) ? (pc + 4) : alu_out;
 assign write_back_enable = (state == EXECUTE && (is_alu_reg || is_alu_imm || is_jal || is_jalr));
 // ---------------------------------------------
@@ -138,7 +154,11 @@ always @(posedge div_clk or posedge SW1) begin
     end
 end
 
-wire [31:0] next_pc = is_jal ? (pc + imm_j) : (is_jalr ? (rs1 + imm_i) : (pc + 4));
+wire [31:0] next_pc = 
+  (is_branch && take_branch) ? (pc + imm_b) :
+  (is_jal) ? (pc + imm_j) : 
+  (is_jalr) ? (rs1 + imm_i) : 
+  (pc + 4);
 // ---------------------------------------------
 
 endmodule
