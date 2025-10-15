@@ -27,9 +27,9 @@ wire is_store   = (instr[6:0] == 7'b0100011); // mem[reg + imm] <= reg
 wire is_system  = (instr[6:0] == 7'b1110011); // ...
 
 // Decode source/destination registers
-wire [3:0] rs1_id = instr[18:15];
-wire [3:0] rs2_id = instr[23:20];
-wire [3:0] rd_id  = instr[10:7];
+wire [4:0] rs1_id = instr[19:15];
+wire [4:0] rs2_id = instr[24:20];
+wire [4:0] rd_id  = instr[11:7];
 
 // Decode instruction funct within instruction types
 wire [2:0] funct3 = instr[14:12];
@@ -45,7 +45,7 @@ wire [31:0] imm_j = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b
 
 // Register Bank
 // ---------------------------------------------
-reg [31:0] registers [0:15];
+reg [31:0] registers [0:31];
 reg [31:0] rs1, rs2;
 wire [31:0] write_back_data = 32'b0;
 wire write_back_enable = 0;
