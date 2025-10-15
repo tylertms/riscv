@@ -36,19 +36,20 @@ wire [2:0] funct3 = instr[14:12];
 wire [6:0] funct7 = instr[31:25];
 
 // Decode immediates for different instruction types
-wire [31:0] imm_i = {{21{instr[31]}}, instr[30:20]};
-wire [31:0] imm_s = {{21{instr[31]}}, instr[30:25], instr[11:7]};
-wire [31:0] imm_b = {{20{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0};
-wire [31:0] imm_u = {instr[31], instr[30:12], {12{1'b0}}};
-wire [31:0] imm_j = {{12{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0};
+wire [31:0] imm_u = {instr[31:12], 12'b0};
+wire [31:0] imm_i = {{20{instr[31]}}, instr[31:20]};
+wire [31:0] imm_s = {{20{instr[31]}}, instr[31:25], instr[11:7]};
+wire [31:0] imm_b = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
+wire [31:0] imm_j = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
+
 // ---------------------------------------------
 
 // Register Bank
 // ---------------------------------------------
 reg [31:0] registers [0:31];
 reg [31:0] rs1, rs2;
-wire [31:0] write_back_data = 32'b0;
-wire write_back_enable = 0;
+wire [31:0] write_back_data;
+wire write_back_enable;
 // ---------------------------------------------
 
 // ALU
@@ -73,10 +74,10 @@ wire [4:0] shift_amount = is_alu_reg ? rs2[4:0] : instr[24:20];
 
 always @(*) begin
   case (funct3)
-    3'b000: alu_out = (funct7[5] & instr[5]) ? (alu_a - alu_b) : (alu_a + alu_b);
+    3'b000: alu_out = ((is_alu_reg && funct7[5]) ? (alu_a - alu_b) : (alu_a + alu_b));
     3'b001: alu_out = (alu_a << shift_amount);
-    3'b010: alu_out = ($signed(alu_a) < $signed(alu_b));
-    3'b011: alu_out = (alu_a < alu_b);
+    3'b010: alu_out = {31'b0, ($signed(alu_a) < $signed(alu_b))};
+    3'b011: alu_out = {31'b0, (alu_a < alu_b)};
     3'b100: alu_out = (alu_a ^ alu_b);
     3'b101: alu_out = (funct7[5] ? ($signed(alu_a) >>> shift_amount) : (alu_a >> shift_amount));
     3'b110: alu_out = (alu_a | alu_b);
