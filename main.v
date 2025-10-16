@@ -11,56 +11,7 @@ module memory (
 
 reg [31:0] mem [0:255];
 
-`include "riscv_assembly.vh"
-integer L0_   = 12;
-integer L1_   = 40;
-integer wait_ = 64;   
-integer L2_   = 72;
-
-initial begin
-
-LI(a0,0);
-// Copy 16 bytes from adress 400
-// to address 800
-LI(s1,16);      
-LI(s0,0);         
-Label(L0_); 
-LB(a1,s0,400);
-SB(a1,s0,800);       
-CALL(LabelRef(wait_));
-ADDI(s0,s0,1); 
-BNE(s0,s1, LabelRef(L0_));
-
-// Read 16 bytes from adress 800
-LI(s0,0);
-Label(L1_);
-LB(a0,s0,800); // a0 (=x10) is plugged to the LEDs
-CALL(LabelRef(wait_));
-ADDI(s0,s0,1); 
-BNE(s0,s1, LabelRef(L1_));
-EBREAK();
-
-Label(wait_);
-LI(t0,1);
-SLLI(t0,t0,17);
-Label(L2_);
-ADDI(t0,t0,-1);
-BNEZ(t0,LabelRef(L2_));
-RET();
-
-endASM();
-
-// Note: index 100 (word address)
-//     corresponds to 
-// address 400 (byte address)
-mem[100] = {8'h4, 8'h3, 8'h2, 8'h1};
-mem[101] = {8'h8, 8'h7, 8'h6, 8'h5};
-mem[102] = {8'hc, 8'hb, 8'ha, 8'h9};
-mem[103] = {8'hff, 8'hf, 8'he, 8'hd};            
-end
-
 wire [29:0] word_addr = mem_addr[31:2];
-   
 always @(posedge clk) begin
   if(mem_rstrb) begin
       mem_rdata <= mem[word_addr];
@@ -317,17 +268,6 @@ wire mem_rstrb;
 wire [31:0] mem_wdata;
 wire [3:0] mem_wmask;
 
-memory ram (
-  .clk(CLK),
-  .mem_addr(mem_addr),
-  .mem_rdata(mem_rdata),
-  .mem_rstrb(mem_rstrb),
-  .mem_wdata(mem_wdata),
-  .mem_wmask(mem_wmask)
-);
-
-wire [31:0] x10;
-
 processor cpu (
   .clk(CLK),
   .reset(SW1),
@@ -335,10 +275,32 @@ processor cpu (
   .mem_rdata(mem_rdata),
   .mem_rstrb(mem_rstrb),
   .mem_wdata(mem_wdata),
-  .mem_wmask(mem_wmask),
-  .x10(x10)
+  .mem_wmask(mem_wmask)
 );
 
-assign {LED1, LED2, LED3, LED4} = x10[3:0];
+wire [31:0] ram_rdata;
+wire [29:0] mem_word_addr = mem_addr[31:2];
+wire is_io = mem_addr[22];
+wire is_ram = !is_io;
+wire mem_wstrb = |mem_wmask;
+
+memory ram (
+  .clk(CLK),
+  .mem_addr(mem_addr),
+  .mem_rdata(ram_rdata),
+  .mem_rstrb(is_ram & mem_rstrb),
+  .mem_wdata(mem_wdata),
+  .mem_wmask({4{is_ram}} & mem_wmask)
+);
+
+localparam IO_LEDS_BIT = 0;  
+always @(posedge CLK) begin
+  if (is_io & mem_wstrb & mem_word_addr[IO_LEDS_BIT]) begin
+    {LED1, LED2, LED3, LED4} <= mem_wdata;
+  end
+end
+
+wire [31:0] io_rdata = 32'b0;
+assign mem_rdata = is_ram ? ram_rdata : io_rdata;
 
 endmodule
