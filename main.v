@@ -9,7 +9,11 @@ module memory (
   output reg [31:0] mem_rdata
 );
 
-reg [31:0] mem [0:255];
+reg [31:0] mem [0:1535];
+
+initial begin
+  $readmemh("firmware.hex", mem);
+end
 
 wire [29:0] word_addr = mem_addr[31:2];
 always @(posedge clk) begin
