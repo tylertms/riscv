@@ -12,7 +12,7 @@ module memory (
 reg [31:0] mem [0:1535];
 
 initial begin
-  $readmemh("firmware.hex", mem);
+  $readmemh("program.hex", mem);
 end
 
 wire [29:0] word_addr = mem_addr[31:2];
@@ -24,7 +24,7 @@ always @(posedge clk) begin
   if(mem_wmask[0]) mem[word_addr][7:0] <= mem_wdata[7:0];
   if(mem_wmask[1]) mem[word_addr][15:8] <= mem_wdata[15:8];
   if(mem_wmask[2]) mem[word_addr][23:16] <= mem_wdata[23:16];
-  if(mem_wmask[3]) mem[word_addr][31:24] <= mem_wdata[31:24];	 
+  if(mem_wmask[3]) mem[word_addr][31:24] <= mem_wdata[31:24];
 end
 
 endmodule
@@ -100,8 +100,8 @@ wire less_than_unsigned = alu_minus[32];
 
 function [31:0] flip32;
   input [31:0] x;
-  flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
-            x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
+  flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7],
+            x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15],
             x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
             x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
 endfunction
@@ -297,12 +297,15 @@ memory ram (
   .mem_wmask({4{is_ram}} & mem_wmask)
 );
 
-localparam IO_LEDS_BIT = 0;  
+localparam IO_LEDS_BIT = 0;
+reg [3:0] leds;
 always @(posedge CLK) begin
   if (is_io & mem_wstrb & mem_word_addr[IO_LEDS_BIT]) begin
-    {LED1, LED2, LED3, LED4} <= mem_wdata;
+    leds <= mem_wdata[3:0];
   end
 end
+
+assign {LED1, LED2, LED3, LED4} = leds;
 
 wire [31:0] io_rdata = 32'b0;
 assign mem_rdata = is_ram ? ram_rdata : io_rdata;
