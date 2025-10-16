@@ -1,32 +1,90 @@
 `default_nettype none
 
-module system (
-  input CLK, SW1,
-  output LED1, LED2, LED3, LED4
+module memory (
+  input clk,
+  input mem_rstrb,
+  input [31:0] mem_addr,
+  input [31:0] mem_wdata,
+  input [3:0] mem_wmask,
+  output reg [31:0] mem_rdata
 );
 
-reg [31:0] pc;
 reg [31:0] mem [0:255];
 
-wire [31:0] mem_addr;
-reg [31:0] mem_rdata;
-wire mem_rstrb;
-wire [31:0] mem_wdata;
-wire [3:0] mem_wmask;
+`include "riscv_assembly.vh"
+integer L0_   = 12;
+integer L1_   = 40;
+integer wait_ = 64;   
+integer L2_   = 72;
+
+initial begin
+
+LI(a0,0);
+// Copy 16 bytes from adress 400
+// to address 800
+LI(s1,16);      
+LI(s0,0);         
+Label(L0_); 
+LB(a1,s0,400);
+SB(a1,s0,800);       
+CALL(LabelRef(wait_));
+ADDI(s0,s0,1); 
+BNE(s0,s1, LabelRef(L0_));
+
+// Read 16 bytes from adress 800
+LI(s0,0);
+Label(L1_);
+LB(a0,s0,800); // a0 (=x10) is plugged to the LEDs
+CALL(LabelRef(wait_));
+ADDI(s0,s0,1); 
+BNE(s0,s1, LabelRef(L1_));
+EBREAK();
+
+Label(wait_);
+LI(t0,1);
+SLLI(t0,t0,17);
+Label(L2_);
+ADDI(t0,t0,-1);
+BNEZ(t0,LabelRef(L2_));
+RET();
+
+endASM();
+
+// Note: index 100 (word address)
+//     corresponds to 
+// address 400 (byte address)
+mem[100] = {8'h4, 8'h3, 8'h2, 8'h1};
+mem[101] = {8'h8, 8'h7, 8'h6, 8'h5};
+mem[102] = {8'hc, 8'hb, 8'ha, 8'h9};
+mem[103] = {8'hff, 8'hf, 8'he, 8'hd};            
+end
 
 wire [29:0] word_addr = mem_addr[31:2];
-always @(posedge CLK) begin
+   
+always @(posedge clk) begin
   if(mem_rstrb) begin
       mem_rdata <= mem[word_addr];
   end
 
-  if (mem_wmask[0]) mem[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
-  if (mem_wmask[1]) mem[word_addr][15:8 ] <= mem_wdata[15:8 ];
-  if (mem_wmask[2]) mem[word_addr][23:16] <= mem_wdata[23:16];
-  if (mem_wmask[3]) mem[word_addr][31:24] <= mem_wdata[31:24];
+  if(mem_wmask[0]) mem[word_addr][7:0] <= mem_wdata[7:0];
+  if(mem_wmask[1]) mem[word_addr][15:8] <= mem_wdata[15:8];
+  if(mem_wmask[2]) mem[word_addr][23:16] <= mem_wdata[23:16];
+  if(mem_wmask[3]) mem[word_addr][31:24] <= mem_wdata[31:24];	 
 end
 
-// assign {LED1, LED2, LED3, LED4} = registers[x10][3:0];
+endmodule
+
+module processor (
+  input clk, reset,
+  input [31:0] mem_rdata,
+  output [31:0] mem_addr,
+  output mem_rstrb,
+  output [31:0] mem_wdata,
+  output [3:0] mem_wmask,
+  output reg [31:0] x10 = 0
+);
+
+reg [31:0] pc = 0;
 
 // Instruction Decoder
 // ---------------------------------------------
@@ -62,11 +120,8 @@ wire [31:0] imm_i = {{20{instr[31]}}, instr[31:20]};
 wire [31:0] imm_s = {{20{instr[31]}}, instr[31:25], instr[11:7]};
 wire [31:0] imm_b = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
 wire [31:0] imm_j = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
-// ---------------------------------------------
-
 
 // Register Bank
-// ---------------------------------------------
 reg [31:0] registers [0:31];
 reg [31:0] rs1, rs2;
 wire [31:0] write_back_data;
@@ -76,17 +131,6 @@ wire write_back_enable;
 
 // ALU
 // ---------------------------------------------
-// funct3 | operation
-// -------------------------
-// 3'b000 | ADD / SUB
-// 3'b001 | lshift (<<)
-// 3'b010 | signed comp. (<)
-// 3'b011 | usign. comp. (<)
-// 3'b100 | XOR (^)
-// 3'b101 | rshift (>>)
-// 3'b110 | OR (|)
-// 3'b111 | AND (&)
-
 wire [31:0] alu_a = rs1;
 wire [31:0] alu_b = (is_alu_reg | is_branch) ? rs2 : imm_i;
 
@@ -101,8 +145,8 @@ wire less_than_unsigned = alu_minus[32];
 
 function [31:0] flip32;
   input [31:0] x;
-  flip32 = {x[00], x[01], x[02], x[03], x[04], x[05], x[06], x[07],
-            x[08], x[09], x[10], x[11], x[12], x[13], x[14], x[15],
+  flip32 = {x[ 0], x[ 1], x[ 2], x[ 3], x[ 4], x[ 5], x[ 6], x[ 7], 
+            x[ 8], x[ 9], x[10], x[11], x[12], x[13], x[14], x[15], 
             x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
             x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
 endfunction
@@ -143,10 +187,15 @@ always @(*) begin
 end
 // ---------------------------------------------
 
-// PC / Next State
+
+// Address Computation
 // ---------------------------------------------
 wire [31:0] pc_plus_imm = pc + (instr[3] ? imm_j[31:0] : instr[4] ? imm_u[31:0] : imm_b[31:0]);
 wire [31:0] pc_plus_4 = pc + 4;
+
+wire [31:0] next_pc = ((is_branch && take_branch) || is_jal) ? pc_plus_imm :
+  is_jalr ? {alu_plus[31:1], 1'b0} :
+  pc_plus_4;
 
 assign write_back_data = (is_jal || is_jalr) ? pc_plus_4 :
   is_lui   ? imm_u :
@@ -156,27 +205,33 @@ assign write_back_data = (is_jal || is_jalr) ? pc_plus_4 :
 
 assign write_back_enable = (state == EXECUTE && !is_branch && !is_store && !is_load) || (state == WAIT_DATA);
 
-wire [31:0] next_pc = ((is_branch && take_branch) || is_jal) ? pc_plus_imm :
-  is_jalr ? {alu_plus[31:1], 1'b0} :
-  pc_plus_4;
-// ---------------------------------------------
-
-
-// Load / Store
-// ---------------------------------------------
 wire [31:0] load_store_addr = rs1 + (is_store ? imm_s : imm_i);
+
+assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ? pc : load_store_addr;
+assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
+assign mem_wmask = {4{(state == STORE)}} & store_wmask;
+// ---------------------------------------------
+
+
+// Load
+// ---------------------------------------------
+wire mem_byte_access = (funct3[1:0] == 2'b00);
+wire mem_half_word_access = (funct3[1:0] == 2'b01);
+
 wire [15:0] load_half_word = load_store_addr[1] ? mem_rdata[31:16] : mem_rdata[15:0];
 wire [7:0] load_byte = load_store_addr[0] ? load_half_word[15:8] : load_half_word[7:0];
 
 wire load_sign = !funct3[2] & (mem_byte_access ? load_byte[7] : load_half_word[15]);
-wire mem_byte_access = (funct3[1:0] == 2'b00);
-wire mem_half_word_access = (funct3[1:0] == 2'b01);
 
 wire [31:0] load_data =
   mem_byte_access ? {{24{load_sign}}, load_byte} :
   mem_half_word_access ? {{16{load_sign}}, load_half_word} :
   mem_rdata;
+// ---------------------------------------------
 
+
+// Store
+// ---------------------------------------------
 assign mem_wdata[7:0] = rs2[7:0];
 assign mem_wdata[15:8] = load_store_addr[0] ? rs2[7:0] : rs2[15:8];
 assign mem_wdata[23:16] = load_store_addr[1] ? rs2[7:0] : rs2[23:16];
@@ -204,8 +259,8 @@ localparam STORE       = 6;
 
 reg [2:0] state = FETCH_INSTR;
 
-always @(posedge CLK or posedge SW1) begin
-  if (SW1) begin
+always @(posedge clk) begin
+  if (reset) begin
     pc <= 0;
     state <= FETCH_INSTR;
   end
@@ -213,6 +268,8 @@ always @(posedge CLK or posedge SW1) begin
   else begin
     if (write_back_enable && rd_id != 0) begin
       registers[rd_id] <= write_back_data;
+
+      if (rd_id == 10) x10 <= write_back_data;
     end
 
     case (state)
@@ -224,8 +281,8 @@ always @(posedge CLK or posedge SW1) begin
         state <= FETCH_REGS;
       end
       FETCH_REGS: begin
-        rs1 <= (rs1_id == 5'd0) ? 32'b0 : registers[rs1_id];
-        rs2 <= (rs2_id == 5'd0) ? 32'b0 : registers[rs2_id];
+        rs1 <= registers[rs1_id];
+        rs2 <= registers[rs2_id];
         state <= EXECUTE;
       end
       EXECUTE: begin
@@ -244,11 +301,44 @@ always @(posedge CLK or posedge SW1) begin
     endcase
   end
 end
-
-assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ? pc : load_store_addr;
-assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
-assign mem_wmask = {4{(state == STORE)}} & store_wmask;
 // ---------------------------------------------
 
+endmodule
+
+
+module system (
+  input CLK, SW1,
+  output LED1, LED2, LED3, LED4
+);
+
+wire [31:0] mem_addr;
+wire [31:0] mem_rdata;
+wire mem_rstrb;
+wire [31:0] mem_wdata;
+wire [3:0] mem_wmask;
+
+memory ram (
+  .clk(CLK),
+  .mem_addr(mem_addr),
+  .mem_rdata(mem_rdata),
+  .mem_rstrb(mem_rstrb),
+  .mem_wdata(mem_wdata),
+  .mem_wmask(mem_wmask)
+);
+
+wire [31:0] x10;
+
+processor cpu (
+  .clk(CLK),
+  .reset(SW1),
+  .mem_addr(mem_addr),
+  .mem_rdata(mem_rdata),
+  .mem_rstrb(mem_rstrb),
+  .mem_wdata(mem_wdata),
+  .mem_wmask(mem_wmask),
+  .x10(x10)
+);
+
+assign {LED1, LED2, LED3, LED4} = x10[3:0];
 
 endmodule
