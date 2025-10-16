@@ -11,11 +11,19 @@ reg [31:0] mem [0:255];
 wire [31:0] mem_addr;
 reg [31:0] mem_rdata;
 wire mem_rstrb;
+wire [31:0] mem_wdata;
+wire [3:0] mem_wmask;
 
+wire [29:0] word_addr = mem_addr[31:2];
 always @(posedge CLK) begin
   if(mem_rstrb) begin
-      mem_rdata <= mem[mem_addr[31:2]];
+      mem_rdata <= mem[word_addr];
   end
+
+  if (mem_wmask[0]) mem[word_addr][ 7:0 ] <= mem_wdata[ 7:0 ];
+  if (mem_wmask[1]) mem[word_addr][15:8 ] <= mem_wdata[15:8 ];
+  if (mem_wmask[2]) mem[word_addr][23:16] <= mem_wdata[23:16];
+  if (mem_wmask[3]) mem[word_addr][31:24] <= mem_wdata[31:24];
 end
 
 // assign {LED1, LED2, LED3, LED4} = registers[x10][3:0];
@@ -34,7 +42,7 @@ wire is_branch  = (instr[6:0] == 7'b1100011); // if (reg op reg) pc <= pc + imm
 wire is_jalr    = (instr[6:0] == 7'b1100111); // reg <= pc + 4 ; pc <= reg + imm
 wire is_jal     = (instr[6:0] == 7'b1101111); // reg <= pc + 4 ; pc <= pc + imm
 wire is_auipc   = (instr[6:0] == 7'b0010111); // reg <= pc + (imm << 12)
-wire is_lui     = (instr[6:0] == 7'b0110111); // reg <= (imm << 12) 
+wire is_lui     = (instr[6:0] == 7'b0110111); // reg <= (imm << 12)
 wire is_load    = (instr[6:0] == 7'b0000011); // reg <= mem[reg + imm]
 wire is_store   = (instr[6:0] == 7'b0100011); // mem[reg + imm] <= reg
 wire is_system  = (instr[6:0] == 7'b1110011); // ...
@@ -93,8 +101,8 @@ wire less_than_unsigned = alu_minus[32];
 
 function [31:0] flip32;
   input [31:0] x;
-  flip32 = {x[00], x[01], x[02], x[03], x[04], x[05], x[06], x[07], 
-            x[08], x[09], x[10], x[11], x[12], x[13], x[14], x[15], 
+  flip32 = {x[00], x[01], x[02], x[03], x[04], x[05], x[06], x[07],
+            x[08], x[09], x[10], x[11], x[12], x[13], x[14], x[15],
             x[16], x[17], x[18], x[19], x[20], x[21], x[22], x[23],
             x[24], x[25], x[26], x[27], x[28], x[29], x[30], x[31]};
 endfunction
@@ -111,9 +119,9 @@ always @(*) begin
     3'b010: alu_out = {31'b0, less_than};
     3'b011: alu_out = {31'b0, less_than_unsigned};
     3'b100: alu_out = (alu_a ^ alu_b);
-    3'b101: alu_out = shifter; 
+    3'b101: alu_out = shifter;
     3'b110: alu_out = (alu_a | alu_b);
-    3'b111: alu_out = (alu_a & alu_b);	
+    3'b111: alu_out = (alu_a & alu_b);
   endcase
 end
 // ---------------------------------------------
@@ -146,7 +154,7 @@ assign write_back_data = (is_jal || is_jalr) ? pc_plus_4 :
   is_load  ? load_data :
   alu_out;
 
-assign write_back_enable = ((state == EXECUTE) && !is_branch && !is_store && !is_load) || (state == WAIT_DATA);
+assign write_back_enable = (state == EXECUTE && !is_branch && !is_store && !is_load) || (state == WAIT_DATA);
 
 wire [31:0] next_pc = ((is_branch && take_branch) || is_jal) ? pc_plus_imm :
   is_jalr ? {alu_plus[31:1], 1'b0} :
@@ -164,10 +172,23 @@ wire load_sign = !funct3[2] & (mem_byte_access ? load_byte[7] : load_half_word[1
 wire mem_byte_access = (funct3[1:0] == 2'b00);
 wire mem_half_word_access = (funct3[1:0] == 2'b01);
 
-wire [31:0] load_data = 
+wire [31:0] load_data =
   mem_byte_access ? {{24{load_sign}}, load_byte} :
   mem_half_word_access ? {{16{load_sign}}, load_half_word} :
   mem_rdata;
+
+assign mem_wdata[7:0] = rs2[7:0];
+assign mem_wdata[15:8] = load_store_addr[0] ? rs2[7:0] : rs2[15:8];
+assign mem_wdata[23:16] = load_store_addr[1] ? rs2[7:0] : rs2[23:16];
+assign mem_wdata[31:24] = load_store_addr[0] ? rs2[7:0] :
+    load_store_addr[1] ? rs2[15:8] : rs2[31:24];
+
+wire [3:0] store_wmask = mem_byte_access ? (load_store_addr[1] ?
+        (load_store_addr[0] ? 4'b1000 : 4'b0100) :
+        (load_store_addr[0] ? 4'b0010 : 4'b0001)) :
+    mem_half_word_access ?
+        (load_store_addr[1] ? 4'b1100 : 4'b0011) :
+        4'b1111;
 // ---------------------------------------------
 
 
@@ -179,14 +200,16 @@ localparam FETCH_REGS  = 2;
 localparam EXECUTE     = 3;
 localparam LOAD        = 4;
 localparam WAIT_DATA   = 5;
+localparam STORE       = 6;
+
 reg [2:0] state = FETCH_INSTR;
 
 always @(posedge CLK or posedge SW1) begin
   if (SW1) begin
     pc <= 0;
     state <= FETCH_INSTR;
-  end 
-  
+  end
+
   else begin
     if (write_back_enable && rd_id != 0) begin
       registers[rd_id] <= write_back_data;
@@ -207,7 +230,7 @@ always @(posedge CLK or posedge SW1) begin
       end
       EXECUTE: begin
         if (!is_system) pc <= next_pc;
-        state <= is_load ? LOAD : FETCH_INSTR;
+        state <= is_load ? LOAD : is_store ? STORE : FETCH_INSTR;
       end
       LOAD: begin
         state <= WAIT_DATA;
@@ -215,12 +238,16 @@ always @(posedge CLK or posedge SW1) begin
       WAIT_DATA: begin
         state <= FETCH_INSTR;
       end
+      STORE: begin
+          state <= FETCH_INSTR;
+      end
     endcase
   end
 end
 
 assign mem_addr = (state == WAIT_INSTR || state == FETCH_INSTR) ? pc : load_store_addr;
 assign mem_rstrb = (state == FETCH_INSTR || state == LOAD);
+assign mem_wmask = {4{(state == STORE)}} & store_wmask;
 // ---------------------------------------------
 
 
