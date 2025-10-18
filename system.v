@@ -242,7 +242,7 @@ always @(posedge clk) begin
     end
 
     state[EXECUTE_BIT]: begin
-        pc <= next_pc;
+        if (!is_system) pc <= next_pc;
         state <= need_to_wait ? WAIT_ALU_OR_MEM : WAIT_INSTR;
     end
 

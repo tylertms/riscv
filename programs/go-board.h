@@ -9,8 +9,11 @@ __asm__(
   "  lui   gp, 0x400\n"
   "  lui   sp, 0x2\n"
   "  addi  sp, sp, -2048\n"
-  "  j     main\n"
+  "  jal   ra, main\n"
+  "  ecall\n"
+  "1: j 1b\n"
 );
+
 
 /* --- IO --- */
 #define IO_BASE     0x400000u
