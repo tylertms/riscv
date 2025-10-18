@@ -304,9 +304,9 @@ localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
 localparam IO_SEG_TWO_BIT = 2;
 
-reg [3:0] leds = 4'b0;
-reg [6:0] seg_one = 7'h7F;
-reg [6:0] seg_two = 7'h7F;
+reg [3:0] leds;
+reg [6:0] seg_one;
+reg [6:0] seg_two;
 
 always @(posedge CLK) begin
     if (is_io & mem_wstrb) begin
