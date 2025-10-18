@@ -3,7 +3,7 @@ CC      := $(TC)-gcc
 OBJCOPY := $(TC)-objcopy
 BLD     := _build/programs
 
-CFLAGS  := -march=rv32i -mabi=ilp32 -ffreestanding -fno-pic -Os -ffunction-sections -fdata-sections
+CFLAGS  := -march=rv32i -mabi=ilp32 -ffreestanding -fno-pic -O3 -ffast-math -ffunction-sections -fdata-sections
 LDFLAGS := -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib -Wl,-T,bram.ld,-e,start,--gc-sections
 
 .PHONY: clean
