@@ -2,6 +2,7 @@
 
 #define IO_BASE     0x400000u
 #define IO_LEDS_OFF 0x0004u
+
 #define LEDS        (*(volatile uint32_t *)(IO_BASE + IO_LEDS_OFF))
 
 static void wait(void) {
@@ -10,12 +11,16 @@ static void wait(void) {
 }
 
 int main(void) {
-    uint32_t v = 0xA;
+    uint32_t n = 0x432903;
 
     for (;;) {
-        LEDS = v & 0xFu;
+        LEDS = n & 0xF;
         wait();
-        v = (~v) & 0xFu;
+        if (n % 2 == 0) {
+            n = n / 2;
+        } else {
+            n = 3 * n + 1;
+        }
     }
 
     return 0;
