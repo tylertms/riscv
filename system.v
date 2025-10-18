@@ -256,7 +256,6 @@ always @(posedge clk) begin
 
   endcase
 end
-
 endmodule
 
 
@@ -274,9 +273,19 @@ wire [31:0] mem_wdata;
 wire [3:0] mem_wmask;
 wire mem_rbusy = 1'b0;
 
+(* init = 0 *) reg [15:0] por_count;
+wire por_active = (por_count != {16{1'b1}});
+
+always @(posedge CLK) begin
+    if (por_active)
+        por_count <= por_count + 1'b1;
+end
+
+wire reset = por_active | SW1;
+
 processor cpu (
   .clk(CLK),
-  .reset(SW1),
+  .reset(reset),
   .mem_addr(mem_addr),
   .mem_rdata(mem_rdata),
   .mem_rbusy(mem_rbusy),
@@ -304,12 +313,16 @@ localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
 localparam IO_SEG_TWO_BIT = 2;
 
-reg [3:0] leds = 4'b0;
-reg [6:0] seg_one = 7'h7F;
-reg [6:0] seg_two = 7'h7F;
+reg [3:0] leds;
+reg [6:0] seg_one;
+reg [6:0] seg_two;
 
 always @(posedge CLK) begin
-    if (is_io & mem_wstrb) begin
+    if (reset) begin
+        leds <= {4{1'b0}};
+        seg_one <= {7{1'b1}};
+        seg_two <= {7{1'b1}};
+    end else if (is_io & mem_wstrb) begin
         if (mem_word_addr[IO_LEDS_BIT])
             leds <= mem_wdata[3:0];
         else if (mem_word_addr[IO_SEG_ONE_BIT])
