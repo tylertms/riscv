@@ -258,7 +258,6 @@ always @(posedge clk) begin
 end
 endmodule
 
-
 module system (
     input CLK, SW1,
     output LED1, LED2, LED3, LED4,

@@ -5,8 +5,8 @@ int main(void) {
     uint32_t num = 0;
 
     for (;;) {
-        write_digit(SEG_ONE, (num / 10) % 10);
-        write_digit(SEG_TWO, num % 10);
+        IO_OUT(IO_SEG_ONE, to_seg((num / 10) % 10));
+        IO_OUT(IO_SEG_TWO, to_seg(num % 10));
 
         delay(200);
 

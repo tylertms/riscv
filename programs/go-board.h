@@ -21,9 +21,8 @@ __asm__(
 #define IO_SEG_ONE  0x0008u
 #define IO_SEG_TWO  0x0010u
 
-#define LEDS    (volatile uint32_t *)(IO_BASE + IO_LEDS)
-#define SEG_ONE (volatile uint32_t *)(IO_BASE + IO_SEG_ONE)
-#define SEG_TWO (volatile uint32_t *)(IO_BASE + IO_SEG_TWO)
+#define IO_IN(port)       *(volatile uint32_t*)(IO_BASE + port)
+#define IO_OUT(port,val)  *(volatile uint32_t*)(IO_BASE + port)=(val)
 
 /* --- timing --- */
 #define DELAY_LOOPS_PER_MS  (1786u)   /* ~25MHz / 14cy / 1000ms */
@@ -40,7 +39,6 @@ static inline void delay(uint32_t ms) {
   while (t--) __asm__ volatile ("" ::: "memory");
 }
 
-static inline void write_digit(volatile uint32_t *reg, uint32_t n) {
-  uint32_t v = (n > 0xF) ? 0x7F : digit_map[n & 0xF];
-  *reg = v;
+static inline uint32_t to_seg(uint32_t n) {
+  return (n > 0xF) ? 0x7F : digit_map[n & 0xF];
 }
