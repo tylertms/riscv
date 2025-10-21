@@ -59,9 +59,15 @@ set_io -nowarn VGA_B0  28
 set_io -nowarn VGA_B1  41
 set_io -nowarn VGA_B2  42
 
+ # ------------ SPI FLASH ------------------------------------------------
+set_io SPIFLASH_CLK    48
+set_io SPIFLASH_CS_N   49
+set_io SPIFLASH_IO[0]  45
+set_io SPIFLASH_IO[1]  46
+
 # ------------ PMOD connector ------------------------------------------------
 #
-#   Pmod standar numeration
+#   Pmod standard numeration
 #
 #      --------
 #    >| 1   7 |
