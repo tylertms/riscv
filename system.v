@@ -261,6 +261,9 @@ endmodule
 
 module system (
     input CLK, SW1,
+    output SPIFLASH_CLK,
+    output SPIFLASH_CS_N,
+    inout [1:0] SPIFLASH_IO,
     output LED1, LED2, LED3, LED4,
     output S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G,
     output S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G
@@ -271,7 +274,7 @@ wire [31:0] mem_rdata;
 wire mem_rstrb;
 wire [31:0] mem_wdata;
 wire [3:0] mem_wmask;
-wire mem_rbusy = 1'b0;
+wire mem_rbusy = spi_flash_rbusy;
 
 (* init = 0 *) reg [15:0] por_count;
 wire por_active = (por_count != {16{1'b1}});
@@ -296,8 +299,9 @@ processor cpu (
 
 wire [31:0] ram_rdata;
 wire [29:0] mem_word_addr = mem_addr[31:2];
-wire is_io = mem_addr[22];
-wire is_ram = !is_io;
+wire is_io = mem_addr[23:22] == 2'b01;
+wire is_ram = mem_addr[23:22] == 2'b00;
+wire is_spi = mem_addr[23];
 wire mem_wstrb = |mem_wmask;
 
 memory ram (
@@ -307,6 +311,20 @@ memory ram (
   .mem_rstrb(is_ram & mem_rstrb),
   .mem_wdata(mem_wdata),
   .mem_wmask({4{is_ram}} & mem_wmask)
+);
+
+wire [31:0] spi_flash_rdata;
+wire spi_flash_rbusy;
+
+spi_flash flash (
+    .clk(CLK),
+    .word_address(mem_word_addr[17:0]),
+    .rdata(spi_flash_rdata),
+    .rstrb(is_spi & mem_rstrb),
+    .rbusy(spi_flash_rbusy),
+    .spi_clk(SPIFLASH_CLK),
+    .spi_cs_n(SPIFLASH_CS_N),
+    .spi_io(SPIFLASH_IO)
 );
 
 localparam IO_LEDS_BIT = 0;
@@ -337,6 +355,72 @@ assign {S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G} = seg_one;
 assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;
 
 wire [31:0] io_rdata = 32'b0;
-assign mem_rdata = is_ram ? ram_rdata : io_rdata;
+assign mem_rdata = is_ram ? ram_rdata :
+    is_spi ? spi_flash_rdata :
+    io_rdata;
 
+endmodule
+
+module spi_flash(
+    input wire clk,
+    input wire rstrb,
+    input wire [17:0] word_address,
+    output wire [31:0] rdata,
+    output wire rbusy,
+    output wire spi_clk,
+    output reg spi_cs_n,
+    inout wire [1:0] spi_io
+);
+
+reg [4:0] clock_count;
+reg [39:0] shifter;
+
+reg dir;
+
+wire busy = (clock_count != 0);
+wire sending = (dir && busy);
+wire receiving = (!dir && busy);
+assign rbusy = !spi_cs_n;
+
+reg io_oe = 1'b1;
+wire [1:0] io_out = shifter[39:38];
+wire [1:0] io_in  = spi_io;
+assign spi_io = io_oe ? io_out : 2'bZZ;
+
+initial spi_cs_n = 1'b1;
+assign spi_clk = !spi_cs_n && clk;
+
+assign rdata = {shifter[7:0], shifter[15:8], shifter[23:16], shifter[31:24]};
+
+function [15:0] dup_byte;
+input [7:0] x;
+    begin
+        dup_byte = {
+            x[7],x[7],x[6],x[6],x[5],x[5],x[4],x[4],
+            x[3],x[3],x[2],x[2],x[1],x[1],x[0],x[0]
+        };
+    end
+endfunction;
+
+always @(negedge clk) begin
+    if (rstrb) begin
+        spi_cs_n  <= 1'b0;
+        io_oe <= 1'b1;
+        dir   <= 1'b1;
+        shifter <= {dup_byte(8'hbb), 4'b0000, word_address[17:0], 2'b00};
+        clock_count <= 5'd28;
+    end else begin
+        if (busy) begin
+            shifter <= {shifter[37:0], (receiving ? io_in : 2'b11)};
+            clock_count <= clock_count - 5'd1;
+            if (dir && clock_count == 1) begin
+                clock_count <= 5'd16;
+                io_oe <= 1'b0;
+                dir <= 1'b0;
+            end
+        end else begin
+            spi_cs_n <= 1'b1;
+        end
+    end
+end
 endmodule
