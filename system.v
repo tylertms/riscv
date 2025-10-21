@@ -258,7 +258,6 @@ always @(posedge clk) begin
 end
 endmodule
 
-
 module system (
     input CLK, SW1,
     output SPIFLASH_CLK,

@@ -1,7 +1,7 @@
 #include "go-board.h"
 #include <stdint.h>
 
-#define TOTAL 1000000000u // 1B
+#define TOTAL 10000000u // 10M
 
 uint32_t random(uint32_t* state) {
     *state = *state * 747796405u + 2891336453u;
@@ -18,8 +18,12 @@ int main(void) {
 
     for (uint32_t i = 0; i < TOTAL; i++) {
         if (i == next_event) {
-            write_digit(SEG_ONE, (progress / 10) % 10);
-            write_digit(SEG_TWO, progress % 10);
+            uint32_t high = to_seg((progress / 10) % 10);
+            uint32_t low = to_seg(progress % 10);
+
+            IO_OUT(IO_SEG_ONE, high);
+            IO_OUT(IO_SEG_TWO, low);
+
             progress++;
             next_event += step;
         }
@@ -27,8 +31,8 @@ int main(void) {
         state = random(&state);
     }
 
-    write_digit(SEG_ONE, (state / 10) % 10);
-    write_digit(SEG_TWO, (state) % 10);
+    IO_OUT(IO_SEG_ONE, to_seg((state / 10) % 10));
+    IO_OUT(IO_SEG_TWO, to_seg((state) % 10));
 
     return 0;
 }
