@@ -308,6 +308,8 @@ memory ram (
   .mem_wmask({4{is_ram}} & mem_wmask)
 );
 
+
+
 localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
 localparam IO_SEG_TWO_BIT = 2;
@@ -337,5 +339,60 @@ assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;
 
 wire [31:0] io_rdata = 32'b0;
 assign mem_rdata = is_ram ? ram_rdata : io_rdata;
+
+endmodule
+
+module spi_flash (
+    input  wire        clk,
+    input  wire        rstrb,
+    input  wire [14:0] word_address,
+    output wire [31:0] rdata,
+    output wire        rbusy,
+
+    output wire        spi_clk,
+    output reg         spi_cs_n,
+    output wire        spi_mosi,
+    input  wire        spi_miso
+);
+    reg [5:0]  snd_bitcount = 6'd0; // 32 bits: 8 cmd + 24 addr
+    reg [31:0] cmd_addr     = 32'h0;
+    reg [5:0]  rcv_bitcount = 6'd0; // 32 bits data
+    reg [31:0] rcv_data     = 32'h0;
+
+    wire sending   = (snd_bitcount != 0);
+    wire receiving = (rcv_bitcount != 0);
+    wire busy      = sending | receiving;
+
+    // --- outputs ---
+    initial spi_cs_n = 1'b1;
+    assign spi_clk  = (!spi_cs_n) ? clk : 1'b0;   // gate SCK when idle (CPOL=0)
+    assign spi_mosi = cmd_addr[31];               // MSB first during TX
+    assign rbusy    = !spi_cs_n;
+
+    // Flash returns bytes LSB-first; swizzle to a natural 32-bit word
+    assign rdata = { rcv_data[7:0], rcv_data[15:8], rcv_data[23:16], rcv_data[31:24] };
+
+    // --- SPI engine: shift on negedge so data is stable at SCK rising edge ---
+    always @(negedge clk) begin
+        if (rstrb) begin
+            // 24-bit byte address = { 7'h00, word_address[14:0], 2'b00 }
+            spi_cs_n     <= 1'b0;
+            cmd_addr     <= {8'h03, 7'b0000000, word_address, 2'b00};
+            snd_bitcount <= 6'd32;
+        end else begin
+            if (sending) begin
+                if (snd_bitcount == 6'd1) rcv_bitcount <= 6'd32; // then receive 32 bits
+                snd_bitcount <= snd_bitcount - 6'd1;
+                cmd_addr     <= {cmd_addr[30:0], 1'b0};
+            end
+            if (receiving) begin
+                rcv_bitcount <= rcv_bitcount - 6'd1;
+                rcv_data     <= {rcv_data[30:0], spi_miso};
+            end
+            if (!busy) begin
+                spi_cs_n <= 1'b1; // done
+            end
+        end
+    end
 
 endmodule

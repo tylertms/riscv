@@ -59,6 +59,11 @@ set_io -nowarn VGA_B0  28
 set_io -nowarn VGA_B1  41
 set_io -nowarn VGA_B2  42
 
+set_io -nowarn SPI_MOSI 45
+set_io -nowarn SPI_MISO 46
+set_io -nowarn SPI_CLK 48
+set_io -nowarn SPI_CS 49
+
 # ------------ PMOD connector ------------------------------------------------
 #
 #   Pmod standar numeration

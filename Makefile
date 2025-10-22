@@ -18,5 +18,11 @@ LDFLAGS := -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib -Wl,-T,bram.ld,-e,st
 	hexdump -v -e '1/4 "%08x\n"' $(BLD)/$$n.bin > program.hex; \
 	echo "OK -> program.hex"
 
+upload:
+	yosys -p "synth_ice40 -top top -json _build/default/hardware.json" -q system.v test.v
+	nextpnr-ice40 --hx1k --package vq100 --json _build/default/hardware.json --asc _build/default/hardware.asc --report _build/default/hardware.pnr --pcf go-board.pcf -q
+	icepack -s _build/default/hardware.asc _build/default/hardware.bin
+	iceprog -d d:32/1 _build/default/hardware.bin
+
 clean:
 	rm -rf _build program.hex
