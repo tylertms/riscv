@@ -262,7 +262,9 @@ module system (
     input CLK, SW1,
     output LED1, LED2, LED3, LED4,
     output S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G,
-    output S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G
+    output S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G,
+    output SPI_CLK, SPI_CS, SPI_MOSI,
+    input SPI_MISO
 );
 
 wire [31:0] mem_addr;
@@ -270,7 +272,7 @@ wire [31:0] mem_rdata;
 wire mem_rstrb;
 wire [31:0] mem_wdata;
 wire [3:0] mem_wmask;
-wire mem_rbusy = 1'b0;
+wire mem_rbusy;
 
 (* init = 0 *) reg [15:0] por_count;
 wire por_active = (por_count != {16{1'b1}});
@@ -295,8 +297,9 @@ processor cpu (
 
 wire [31:0] ram_rdata;
 wire [29:0] mem_word_addr = mem_addr[31:2];
-wire is_io = mem_addr[22];
-wire is_ram = !is_io;
+wire is_spi = mem_addr[23];
+wire is_io = mem_addr[23:22] == 2'b01;
+wire is_ram = mem_addr[23:22] == 2'b00;
 wire mem_wstrb = |mem_wmask;
 
 memory ram (
@@ -308,7 +311,22 @@ memory ram (
   .mem_wmask({4{is_ram}} & mem_wmask)
 );
 
+wire [31:0] spi_rdata;
+wire spi_rbusy;
 
+spi_flash flash (
+    .clk(CLK),
+    .rstrb(is_spi & mem_rstrb),
+    .word_address(mem_word_addr[14:0]),
+    .rdata(spi_rdata),
+    .rbusy(spi_rbusy),
+    .spi_clk(SPI_CLK),
+    .spi_cs_n(SPI_CS),
+    .spi_mosi(SPI_MOSI),
+    .spi_miso(SPI_MISO)
+);
+
+assign mem_rbusy = spi_rbusy;
 
 localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
@@ -338,9 +356,12 @@ assign {S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G} = seg_one;
 assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;
 
 wire [31:0] io_rdata = 32'b0;
-assign mem_rdata = is_ram ? ram_rdata : io_rdata;
+assign mem_rdata = is_ram ? ram_rdata :
+    is_spi ? spi_rdata :
+    io_rdata;
 
 endmodule
+
 
 module spi_flash (
     input  wire        clk,

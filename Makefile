@@ -19,7 +19,7 @@ LDFLAGS := -march=rv32i -mabi=ilp32 -nostartfiles -nostdlib -Wl,-T,bram.ld,-e,st
 	echo "OK -> program.hex"
 
 upload:
-	yosys -p "synth_ice40 -top top -json _build/default/hardware.json" -q system.v test.v
+	yosys -p "synth_ice40 -top system -json _build/default/hardware.json" -q system.v
 	nextpnr-ice40 --hx1k --package vq100 --json _build/default/hardware.json --asc _build/default/hardware.asc --report _build/default/hardware.pnr --pcf go-board.pcf -q
 	icepack -s _build/default/hardware.asc _build/default/hardware.bin
 	iceprog -d d:32/1 _build/default/hardware.bin
