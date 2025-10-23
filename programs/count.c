@@ -1,7 +1,7 @@
 #include "go-board.h"
 #include <stdint.h>
 
-int main(void) {
+_fast int main(void) {
     uint32_t num = 0;
 
     for (;;) {
