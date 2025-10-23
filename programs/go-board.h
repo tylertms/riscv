@@ -1,18 +1,11 @@
 #pragma once
 #include <stdint.h>
 
-__asm__(
-  ".option norvc\n"
-  ".section .text\n"
-  ".globl start\n"
-  "start:\n"
-  "  lui   gp, 0x400\n"
-  "  lui   sp, 0x2\n"
-  "  addi  sp, sp, -2048\n"
-  "  jal   ra, main\n"
-  "  ecall\n"
-  "1: j 1b\n"
-);
+#if defined(__ELF__) && (defined(__riscv) || defined(__riscv_xlen))
+  #define _fast __attribute__((section(".fast"), noinline))
+#else
+  #define _fast
+#endif
 
 
 /* --- IO --- */
