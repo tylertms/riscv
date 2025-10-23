@@ -5,8 +5,10 @@ module system (
     output LED1, LED2, LED3, LED4,
     output S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G,
     output S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G,
+    input SPI_MISO,
     output SPI_CLK, SPI_CS, SPI_MOSI,
-    input SPI_MISO
+    output OLED_CS, OLED_MOSI, OLED_NC, OLED_SCK,
+    output OLED_DC, OLED_RES, OLED_VCC_EN, OLED_PMOD_EN
 );
 
 wire [31:0] mem_addr;
@@ -73,10 +75,12 @@ assign mem_rbusy = is_spi ? spi_rbusy : 1'b0;
 localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
 localparam IO_SEG_TWO_BIT = 2;
+localparam IO_PMOD_BIT = 3;
 
 reg [3:0] leds;
 reg [6:0] seg_one;
 reg [6:0] seg_two;
+reg [7:0] pmod_oled;
 
 always @(posedge CLK) begin
     if (reset) begin
@@ -90,6 +94,8 @@ always @(posedge CLK) begin
             seg_one <= mem_wdata[6:0];
         else if (mem_word_addr[IO_SEG_TWO_BIT])
             seg_two <= mem_wdata[6:0];
+        else if (mem_word_addr[IO_PMOD_BIT])
+            pmod_oled <= mem_wdata[7:0];
     end
 end
 
@@ -97,6 +103,8 @@ end
 assign {LED1, LED2, LED3, LED4} = leds;
 assign {S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G} = seg_one;
 assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;
+assign {OLED_CS, OLED_MOSI, OLED_NC, OLED_SCK,
+    OLED_DC, OLED_RES, OLED_VCC_EN, OLED_PMOD_EN} = pmod_oled;
 
 wire [31:0] io_rdata = 32'b0;
 assign mem_rdata = is_ram ? ram_rdata :
