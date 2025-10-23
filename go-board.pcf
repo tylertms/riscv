@@ -88,11 +88,11 @@ set_io -nowarn SPI_CS 49
 #    | 3v3  3v3 |
 #     ----------
 #
-set_io -nowarn PMOD1   65
-set_io -nowarn PMOD2   64
-set_io -nowarn PMOD3   63
-set_io -nowarn PMOD4   62
-set_io -nowarn PMOD7   78
-set_io -nowarn PMOD8   79
-set_io -nowarn PMOD9   80
-set_io -nowarn PMOD10  81
+set_io -nowarn OLED_CS      65
+set_io -nowarn OLED_MOSI    64
+set_io -nowarn OLED_NC      63
+set_io -nowarn OLED_SCK     62
+set_io -nowarn OLED_DC      78
+set_io -nowarn OLED_RES     79
+set_io -nowarn OLED_VCC_EN  80
+set_io -nowarn OLED_PMOD_EN 81
