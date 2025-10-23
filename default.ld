@@ -11,26 +11,13 @@ SECTIONS
   /* -------- CODE IN FLASH -------- */
   .text : {
     . = ALIGN(4);
-
-    /* force your startup first */
-    */programs/init/init.o(.text*)
-
-    /* unwind/eh (usually empty) */
+    */programs/init/init.o(.text*)             /* startup in flash */
     *(.eh_frame_hdr) *(.eh_frame) *(.gcc_except_table*)
-
-    /* constructors (if any) */
     KEEP(*(.init_array .init_array.*))
-
-    /* the rest of your code + consts in flash,
-       but EXCLUDE libgcc objects from here */
     *(EXCLUDE_FILE(*/libgcc.a:*.o) .text .text.*)
-
-    . = ALIGN(4);
-    *(.rodata .rodata.* .srodata .srodata.*)
-
     . = ALIGN(4);
     _etext  = .;
-    _sidata = _etext;   /* load addr for .data */
+    _sidata = _etext;         /* load addr for .data/.rodata below */
   } > FLASH
 
   /* -------- FAST CODE IN RAM (copied from flash) -------- */
@@ -52,6 +39,7 @@ SECTIONS
   .data : ALIGN(4) {
     _sdata = .;
     *(.data .data.* .sdata .sdata.*)
+    *(.rodata .rodata.* .srodata .srodata.*)   /* <— pulled into RAM */
     . = ALIGN(4);
     _edata = .;
   } > RAM AT > FLASH

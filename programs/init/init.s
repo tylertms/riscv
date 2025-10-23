@@ -9,7 +9,7 @@ _start:
 .option norelax
     li   gp, IO_BASE
 .option pop
-    li   sp, 0x1800            # top of 6KB RAM
+    li   sp, 0x1800
 
 # 1) Clear .bss
     la a0, _sbss
@@ -50,4 +50,4 @@ _start:
 # 4) Jump to C
     call main
     ebreak
-1:  j 1b
+0:  j 0b

@@ -13,7 +13,7 @@ reg [31:0] mem [1536];
 
 wire [10:0] word_addr = mem_addr[12:2];
 always @(posedge clk) begin
-  if(mem_rstrb) begin
+  if (mem_rstrb) begin
       mem_rdata <= mem[word_addr];
   end
 

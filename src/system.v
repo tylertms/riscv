@@ -68,7 +68,7 @@ spi_flash flash (
     .spi_miso(SPI_MISO)
 );
 
-assign mem_rbusy = spi_rbusy;
+assign mem_rbusy = is_spi ? spi_rbusy : 1'b0;
 
 localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
@@ -93,7 +93,7 @@ always @(posedge CLK) begin
     end
 end
 
-assign {LED1, LED2, LED3, LED4} = leds;
+assign {LED1, LED2, LED3, LED4} = {is_io, is_ram, is_spi, mem_rbusy};
 assign {S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G} = seg_one;
 assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;
 

@@ -205,8 +205,8 @@ always @(posedge clk) begin
   case (1'b1)
     state[WAIT_INSTR_BIT]: begin
         if (!mem_rbusy) begin
-            rs1 <= (mem_rdata[19:15] == 0) ? 32'b0 : registers[mem_rdata[19:15]];
-            rs2 <= (mem_rdata[24:20] == 0) ? 32'b0 : registers[mem_rdata[24:20]];
+            rs1 <= registers[mem_rdata[19:15]];
+            rs2 <= registers[mem_rdata[24:20]];
             instr <= mem_rdata[31:2];
             state <= EXECUTE;
         end
