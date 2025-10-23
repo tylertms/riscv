@@ -10,7 +10,7 @@ module riscv_32i (
   output [3:0] mem_wmask
 );
 
-localparam RESET_ADDR = 32'h00000000;
+localparam RESET_ADDR = 32'h00810000;
 localparam ADDR_WIDTH = 24;
 localparam ADDR_PAD = 32 - ADDR_WIDTH;
 

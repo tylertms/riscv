@@ -11,10 +11,6 @@ module memory (
 
 reg [31:0] mem [1536];
 
-initial begin
-  $readmemh("program.hex", mem);
-end
-
 wire [10:0] word_addr = mem_addr[12:2];
 always @(posedge clk) begin
   if(mem_rstrb) begin
