@@ -1,5 +1,5 @@
 #include "go-board.h"
-#define SPI_FLASH_BASE ((char*)(1 << 23))
+#define SPI_FLASH_BASE ((char*)((1 << 23) + (1 << 16)))
 
 int main(void) {
     for(;;) for (uint8_t i=0; i < 16; i++) {

@@ -3,13 +3,13 @@
 
 #define TOTAL 10000000u // 10M
 
-uint32_t random(uint32_t* state) {
+_fast uint32_t random(uint32_t* state) {
     *state = *state * 747796405u + 2891336453u;
     uint32_t word = ((*state >> ((*state >> 28u) + 4u)) ^ *state) * 277803737u;
     return (word >> 22u) ^ word;
 }
 
-int main(void) {
+_fast int main(void) {
     uint32_t state = 0;
     uint32_t progress = 0;
 
