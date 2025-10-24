@@ -87,6 +87,7 @@ always @(posedge CLK) begin
         leds <= {4{1'b0}};
         seg_one <= {7{1'b1}};
         seg_two <= {7{1'b1}};
+        pmod_oled <= 8'b10000100;
     end else if (is_io & mem_wstrb) begin
         if (mem_word_addr[IO_LEDS_BIT])
             leds <= mem_wdata[3:0];
@@ -96,6 +97,9 @@ always @(posedge CLK) begin
             seg_two <= mem_wdata[6:0];
         else if (mem_word_addr[IO_PMOD_BIT])
             pmod_oled <= mem_wdata[7:0];
+    end else if (is_io & mem_rstrb) begin
+        if (mem_word_addr[IO_PMOD_BIT])
+            io_rdata <= pmod_oled;
     end
 end
 
@@ -106,7 +110,7 @@ assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;
 assign {OLED_CS, OLED_MOSI, OLED_NC, OLED_SCK,
     OLED_DC, OLED_RES, OLED_VCC_EN, OLED_PMOD_EN} = pmod_oled;
 
-wire [31:0] io_rdata = 32'b0;
+reg [31:0] io_rdata = 32'b0;
 assign mem_rdata = is_ram ? ram_rdata :
     is_spi ? spi_rdata :
     io_rdata;
