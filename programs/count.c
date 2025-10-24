@@ -8,7 +8,7 @@ _fast int main(void) {
         IO_OUT(IO_SEG_ONE, to_seg((num / 10) % 10));
         IO_OUT(IO_SEG_TWO, to_seg(num % 10));
 
-        delay(200);
+        delay_ms(200);
 
         num = (num == 99) ? 0 : (num + 1);
     }

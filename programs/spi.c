@@ -11,7 +11,7 @@ int main(void) {
        IO_OUT(IO_SEG_ONE, high);
        IO_OUT(IO_SEG_TWO, low);
 
-       delay(1000);
+       delay_ms(1000);
     }
 
     return 0;
