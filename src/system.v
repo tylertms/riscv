@@ -104,9 +104,7 @@ always @(posedge CLK) begin
         else if (mem_word_addr[IO_PMOD_BIT])
             pmod_oled <= mem_wdata[7:0];
     end else if (is_io & mem_rstrb) begin
-        if (mem_word_addr[IO_PMOD_BIT])
-            io_rdata <= pmod_oled;
-        else if (mem_word_addr[IO_SW_BIT])
+        if (mem_word_addr[IO_SW_BIT])
             io_rdata <= switches;
     end
 end
