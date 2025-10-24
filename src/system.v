@@ -1,7 +1,8 @@
 `default_nettype none
 
 module system (
-    input CLK, SW1,
+    input CLK,
+    input SW1, SW2, SW3, SW4,
     output LED1, LED2, LED3, LED4,
     output S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G,
     output S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G,
@@ -76,7 +77,12 @@ localparam IO_LEDS_BIT = 0;
 localparam IO_SEG_ONE_BIT = 1;
 localparam IO_SEG_TWO_BIT = 2;
 localparam IO_PMOD_BIT = 3;
+localparam IO_SW_BIT = 4;
 
+/* Inputs */
+wire [3:0] switches;
+
+/* Outputs */
 reg [3:0] leds;
 reg [6:0] seg_one;
 reg [6:0] seg_two;
@@ -100,10 +106,13 @@ always @(posedge CLK) begin
     end else if (is_io & mem_rstrb) begin
         if (mem_word_addr[IO_PMOD_BIT])
             io_rdata <= pmod_oled;
+        else if (mem_word_addr[IO_SW_BIT])
+            io_rdata <= switches;
     end
 end
 
-//{is_io, is_ram, is_spi, mem_rbusy};
+assign switches = {SW1, SW2, SW3, SW4};
+
 assign {LED1, LED2, LED3, LED4} = leds;
 assign {S1_A, S1_B, S1_C, S1_D, S1_E, S1_F, S1_G} = seg_one;
 assign {S2_A, S2_B, S2_C, S2_D, S2_E, S2_F, S2_G} = seg_two;

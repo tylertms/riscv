@@ -13,10 +13,16 @@
 #define IO_SEG_ONE    0x0008u
 #define IO_SEG_TWO    0x0010u
 #define IO_PMOD       0x0020u
+#define IO_SW         0x0040u
 
 #define MMIO32(addr)  (*(volatile uint32_t*)(uintptr_t)(addr))
 #define IO_IN(port)        MMIO32(IO_BASE + (port))
 #define IO_OUT(port,val)   (MMIO32(IO_BASE + (port)) = (uint32_t)(val))
+
+#define PIN_SW4    (1u << 0)
+#define PIN_SW3    (1u << 1)
+#define PIN_SW2    (1u << 2)
+#define PIN_SW1    (1u << 3)
 
 /* ========================= Timing ========================= */
 #ifndef CPU_HZ
