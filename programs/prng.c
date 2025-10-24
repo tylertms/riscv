@@ -1,4 +1,4 @@
-#include "go-board.h"
+#include "include/go-board.h"
 #include <stdint.h>
 
 #define TOTAL 10000000u // 10M

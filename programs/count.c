@@ -1,4 +1,4 @@
-#include "go-board.h"
+#include "include/go-board.h"
 #include <stdint.h>
 
 _fast int main(void) {
