@@ -146,6 +146,15 @@ _fast static void ssd1331_cmd4(uint8_t cmd, uint8_t a, uint8_t b, uint8_t c, uin
     ssd1331_cs_deassert();
 }
 
+static inline uint8_t q5(uint8_t v) { return (uint8_t)((v >> 3) << 1); }
+static inline uint8_t q6(uint8_t v) { return (uint8_t)(v >> 2); }
+
+static inline void ssd1331_send_color(uint8_t r8, uint8_t g8, uint8_t b8) {
+    ssd1331_spi_send(q5(r8));
+    ssd1331_spi_send(q6(g8));
+    ssd1331_spi_send(q5(b8));
+}
+
 /* ---------------- Pixel streaming helpers (DC=1 only for pixel bytes) ---------------- */
 static inline void ssd1331_stream_begin(void)       {
     uint32_t v = _pmod_state;
@@ -216,4 +225,56 @@ static void ssd1331_shutdown(void) {
     pmod_clr(SSD1331_VCC_EN);
     delay_ms(100);
     pmod_clr(SSD1331_PMOD_EN);
+}
+
+/* ---------------- GAC Drawing Helpers ---------------- */
+_fast static void fill_solid(uint8_t r, uint8_t g, uint8_t b) {
+    ssd1331_cmd2(SSD1331_FILL_ENABLE, 0x01, 0x00);
+
+    ssd1331_dc_cmd();
+    ssd1331_cs_assert();
+    ssd1331_spi_send(SSD1331_DRAW_RECT);
+    ssd1331_spi_send(0);
+    ssd1331_spi_send(0);
+    ssd1331_spi_send(SSD1331_WIDTH - 1);
+    ssd1331_spi_send(SSD1331_HEIGHT - 1);
+
+    ssd1331_send_color(r, g, b);
+    ssd1331_send_color(r, g, b);
+
+    ssd1331_cs_deassert();
+}
+
+_fast static void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t r, uint8_t g, uint8_t b) {
+    ssd1331_cmd2(SSD1331_FILL_ENABLE, 0x01, 0x00);
+
+    uint8_t x2 = (uint8_t)((x + w - 1 > (SSD1331_WIDTH - 1))
+        ? (SSD1331_WIDTH - 1) : (x + w - 1));
+    uint8_t y2 = (uint8_t)((y + h - 1 > (SSD1331_HEIGHT - 1))
+        ? (SSD1331_HEIGHT - 1) : (y + h - 1));
+
+    ssd1331_dc_cmd();
+    ssd1331_cs_assert();
+    ssd1331_spi_send(SSD1331_DRAW_RECT);
+    ssd1331_spi_send(x);
+    ssd1331_spi_send(y);
+    ssd1331_spi_send(x2);
+    ssd1331_spi_send(y2);
+
+    ssd1331_send_color(r, g, b);
+    ssd1331_send_color(r, g, b);
+
+    ssd1331_cs_deassert();
+}
+
+static inline void draw_line_color(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t r, uint8_t g, uint8_t b) {
+    ssd1331_dc_cmd();
+    ssd1331_cs_assert();
+    ssd1331_spi_send(SSD1331_DRAW_LINE);
+    ssd1331_spi_send(x0);
+    ssd1331_spi_send(y0);
+    ssd1331_spi_send(x1);
+    ssd1331_spi_send(y1);
+    ssd1331_send_color(r, g, b);
+    ssd1331_cs_deassert();
 }
