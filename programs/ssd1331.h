@@ -1,6 +1,11 @@
 #pragma once
 #include "go-board.h"
 
+/* ---------------- Screen Definitions ---------------- */
+#define SSD1331_WIDTH 96u
+#define SSD1331_HEIGHT 64u
+#define SSD1331_PIXEL_COUNT (SSD1331_WIDTH * SSD1331_HEIGHT)
+
 /* ---------------- PMOD/OLED bits ---------------- */
 #define SSD1331_PMOD_EN    (1u << 0)   /* PMOD power enable                      */
 #define SSD1331_VCC_EN     (1u << 1)   /* Panel VCC enable                       */
@@ -56,9 +61,9 @@ typedef enum {
   SSD1331_SET_REMAP_COLOR_DEPTH        = 0xA0,
   SSD1331_SET_DISPLAY_START_LINE       = 0xA1,
   SSD1331_SET_DISPLAY_OFFSET           = 0xA2,
-  SSD1331_SET_DISPLAY_MODE_ALL_OFF     = 0xA4,
+  SSD1331_SET_DISPLAY_MODE_NORMAL      = 0xA4,
   SSD1331_SET_DISPLAY_MODE_ALL_ON      = 0xA5,
-  SSD1331_SET_DISPLAY_MODE_NORMAL      = 0xA6,
+  SSD1331_SET_DISPLAY_MODE_ALL_OFF     = 0xA6,
   SSD1331_SET_DISPLAY_MODE_INVERT      = 0xA7,
   SSD1331_SET_MULTIPLEX_RATIO          = 0xA8,
   SSD1331_DIM_MODE_SETTING             = 0xAB,
@@ -179,7 +184,7 @@ static void ssd1331_init(void) {
   ssd1331_cmd1(SSD1331_SET_REMAP_COLOR_DEPTH,  0x72);
   ssd1331_cmd1(SSD1331_SET_DISPLAY_START_LINE, 0x00);
   ssd1331_cmd1(SSD1331_SET_DISPLAY_OFFSET,     0x00);
-  ssd1331_cmd0(SSD1331_SET_DISPLAY_MODE_ALL_OFF);
+  ssd1331_cmd0(SSD1331_SET_DISPLAY_MODE_NORMAL);
   ssd1331_cmd1(SSD1331_SET_MULTIPLEX_RATIO,    0x3F);
   ssd1331_cmd1(SSD1331_SET_MASTER_CONFIG,      0x8E);
   ssd1331_cmd1(SSD1331_POWER_SAVE_MODE,        0x0B);
