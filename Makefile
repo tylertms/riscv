@@ -1,5 +1,5 @@
 # Toolchain / paths
-TC       ?= riscv64-elf
+TC       ?= riscv64-unknown-elf
 CC        = $(TC)-gcc
 OBJCOPY   = $(TC)-objcopy
 READELF := $(TC)-readelf
@@ -14,8 +14,7 @@ ABI      ?= ilp32
 MARCHABI  = -march=$(ARCH) -mabi=$(ABI)
 
 CFLAGS   := $(MARCHABI) -ffreestanding -fno-pic -O3 -ffunction-sections -fdata-sections
-LDFLAGS  := $(MARCHABI) -T default.ld -nostdlib -Wl,--gc-sections
-
+LDFLAGS  := $(MARCHABI) -T default.ld -nostartfiles -nostdlib -Wl,--gc-sections
 START    := $(BLD)/init.o
 
 .PHONY: all
