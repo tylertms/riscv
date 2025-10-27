@@ -1,5 +1,4 @@
-#include "include/go-board.h"
-#include <stdint.h>
+#include <go-board.h>
 
 _fast int main(void) {
     uint32_t num = 0;

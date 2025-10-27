@@ -1,5 +1,5 @@
-#include "include/go-board.h"
-#include "include/ssd1331.h"
+#include <go-board.h>
+#include <ssd1331.h>
 
 _fast static void gradient_h(void) {
     for (int x = 0; x < SSD1331_WIDTH; x++) {

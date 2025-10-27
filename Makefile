@@ -10,7 +10,7 @@ BLD     := _build/programs
 ARCH    := rv32i
 ABI     := ilp32
 CFLAGS  := -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-pic -O3 \
-           -ffunction-sections -fdata-sections -I.
+           -ffunction-sections -fdata-sections -I$(SRC_DIR)/include
 LDFLAGS := -march=$(ARCH) -mabi=$(ABI) -T default.ld -nostartfiles -nostdlib \
            -Wl,--gc-sections
 
