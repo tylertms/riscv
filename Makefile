@@ -1,4 +1,4 @@
-TC      := riscv64-unknown-elf
+TC      := riscv-none-elf
 CC      := $(TC)-gcc
 OBJCOPY := $(TC)-objcopy
 OBJDUMP := $(TC)-objdump
@@ -14,7 +14,9 @@ CFLAGS  := -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-pic -O3 \
 LDFLAGS := -march=$(ARCH) -mabi=$(ABI) -T default.ld -nostartfiles -nostdlib \
            -Wl,--gc-sections
 
-.PHONY: all clean
+DEVICE  := 0x0403:0x6010
+
+.PHONY: all clean reflash
 
 all:
 	@echo "Usage: make <name>.prog"
@@ -35,7 +37,7 @@ $(BLD)/%.bin: $(BLD)/%.elf
 	$(OBJCOPY) -O binary $< $@
 
 %.prog: $(BLD)/%.bin
-	iceprog -d d:32/1 -o 64k $<
+	iceprog -d i:$(DEVICE) -o 64k $<
 
 %.report: $(BLD)/%.elf
 	@echo "=== REPORT for $* ==="; echo; \
@@ -46,6 +48,10 @@ $(BLD)/%.bin: $(BLD)/%.elf
 	$(OBJDUMP) -t $< | awk '/\.fast[[:space:]]/ {print "  "$$NF}' | sort -u; echo; \
 	echo "== DATA (.data/.bss) =="; \
 	$(OBJDUMP) -t $< | awk '/\.(data|bss)[[:space:]]/ && !/^\.(data|bss)$$/ {print "  "$$NF}' | sort -u
+
+reflash:
+	icepack -s _build\default\hardware.asc _build\default\hardware.bin
+	iceprog -d i:$(DEVICE) _build\default\hardware.bin
 
 clean:
 	rm -rf $(BLD)
