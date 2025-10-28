@@ -206,7 +206,7 @@ static void ssd1331_init(void) {
     ssd1331_cmd1(SSD1331_SET_SECOND_PRECHARGE_C, 0x64);
     ssd1331_cmd1(SSD1331_SET_PRECHARGE_VOLTAGE,  0x3A);
     ssd1331_cmd1(SSD1331_SET_VCOMH,              0x3E);
-    ssd1331_cmd1(SSD1331_MASTER_CURRENT_CONTROL, 0x06);
+    ssd1331_cmd1(SSD1331_MASTER_CURRENT_CONTROL, 0x0A);
     ssd1331_cmd1(SSD1331_SET_CONTRAST_A,         0x91);
     ssd1331_cmd1(SSD1331_SET_CONTRAST_B,         0x50);
     ssd1331_cmd1(SSD1331_SET_CONTRAST_C,         0x7D);

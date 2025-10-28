@@ -46,7 +46,7 @@ _fast int main(void) {
 
     int pat = 0;
     while (1) {
-        IO_OUT(IO_LEDS, (uint32_t)(pat & 0x7));
+        IO_OUT(IO_SEG_TWO, to_seg(pat & 0x7));
 
         switch (pat) {
             case 0: fill_solid(255, 255, 255); break;
