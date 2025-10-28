@@ -50,8 +50,8 @@ $(BLD)/%.bin: $(BLD)/%.elf
 	$(OBJDUMP) -t $< | awk '/\.(data|bss)[[:space:]]/ && !/^\.(data|bss)$$/ {print "  "$$NF}' | sort -u
 
 reflash:
-	icepack -s _build\default\hardware.asc _build\default\hardware.bin
-	iceprog -d i:$(DEVICE) _build\default\hardware.bin
+	icepack -s _build/default/hardware.asc _build/default/hardware.bin
+	iceprog -d i:$(DEVICE) _build/default/hardware.bin
 
 clean:
 	rm -rf $(BLD)
