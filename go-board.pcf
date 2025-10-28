@@ -46,6 +46,12 @@ set_io -nowarn CLK 15
 set_io -nowarn RX  73
 set_io -nowarn TX  74
 
+# -------------------------- SPI ---------------------------------------------
+set_io -nowarn SPI_MOSI 45
+set_io -nowarn SPI_MISO 46
+set_io -nowarn SPI_CLK 48
+set_io -nowarn SPI_CS 49
+
 # -------------------------- VGA ---------------------------------------------
 set_io -nowarn VGA_HS  26
 set_io -nowarn VGA_VS  27
@@ -58,11 +64,6 @@ set_io -nowarn VGA_G2  33
 set_io -nowarn VGA_B0  28
 set_io -nowarn VGA_B1  41
 set_io -nowarn VGA_B2  42
-
-set_io -nowarn SPI_MOSI 45
-set_io -nowarn SPI_MISO 46
-set_io -nowarn SPI_CLK 48
-set_io -nowarn SPI_CS 49
 
 # ------------ PMOD connector ------------------------------------------------
 #
