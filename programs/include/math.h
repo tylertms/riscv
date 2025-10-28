@@ -10,3 +10,15 @@ static inline float sqrtf(float x) {
     }
     return guess;
 }
+
+static inline float minf(float a, float b) {
+    return a > b ? b : a;
+}
+
+static inline float maxf(float a, float b) {
+    return a >= b ? a : b;
+}
+
+static inline float clampf(float n, float l, float h) {
+    return n < l ? l : n > h ? h : n;
+}

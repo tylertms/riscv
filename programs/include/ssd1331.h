@@ -1,9 +1,12 @@
 #pragma once
 #include "go-board.h"
+#include "vec3.h"
+#include "math.h"
 
 /* ---------------- Screen Definitions ---------------- */
 #define SSD1331_WIDTH 96u
 #define SSD1331_HEIGHT 64u
+#define SSD1331_ASPECT_RATIO 1.5f
 #define SSD1331_PIXEL_COUNT (SSD1331_WIDTH * SSD1331_HEIGHT)
 
 /* ---------------- PMOD/OLED bits ---------------- */
@@ -46,6 +49,7 @@ typedef enum {
     // --- Addressing ---
     SSD1331_SET_COLUMN_ADDR              = 0x15,
     SSD1331_SET_ROW_ADDR                 = 0x75,
+    SSD1331_CMD_WRITE_RAM                = 0x5C,
 
     // --- Brightness / current ---
     SSD1331_SET_CONTRAST_A               = 0x81,
@@ -116,43 +120,63 @@ _fast static void ssd1331_spi_send(uint8_t byte) {
 }
 
 /* ---------------- Command Helpers ---------------- */
-_fast static void ssd1331_cmd0(uint8_t cmd) {
+static void ssd1331_cmd0(uint8_t cmd) {
     ssd1331_dc_cmd(); ssd1331_cs_assert();
     ssd1331_spi_send(cmd);
     ssd1331_cs_deassert();
 }
 
-_fast static void ssd1331_cmd1(uint8_t cmd, uint8_t a) {
+static void ssd1331_cmd1(uint8_t cmd, uint8_t a) {
     ssd1331_dc_cmd(); ssd1331_cs_assert();
     ssd1331_spi_send(cmd); ssd1331_spi_send(a);
     ssd1331_cs_deassert();
 }
 
-_fast static void ssd1331_cmd2(uint8_t cmd, uint8_t a, uint8_t b) {
+static void ssd1331_cmd2(uint8_t cmd, uint8_t a, uint8_t b) {
     ssd1331_dc_cmd(); ssd1331_cs_assert();
     ssd1331_spi_send(cmd); ssd1331_spi_send(a); ssd1331_spi_send(b);
     ssd1331_cs_deassert();
 }
 
-_fast static void ssd1331_cmd3(uint8_t cmd, uint8_t a, uint8_t b, uint8_t c) {
+static void ssd1331_cmd3(uint8_t cmd, uint8_t a, uint8_t b, uint8_t c) {
     ssd1331_dc_cmd(); ssd1331_cs_assert();
     ssd1331_spi_send(cmd); ssd1331_spi_send(a); ssd1331_spi_send(b); ssd1331_spi_send(c);
     ssd1331_cs_deassert();
 }
 
-_fast static void ssd1331_cmd4(uint8_t cmd, uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
+static void ssd1331_cmd4(uint8_t cmd, uint8_t a, uint8_t b, uint8_t c, uint8_t d) {
     ssd1331_dc_cmd(); ssd1331_cs_assert();
     ssd1331_spi_send(cmd); ssd1331_spi_send(a); ssd1331_spi_send(b); ssd1331_spi_send(c); ssd1331_spi_send(d);
     ssd1331_cs_deassert();
 }
 
-static inline uint8_t q5(uint8_t v) { return (uint8_t)((v >> 3) << 1); }
+static inline uint8_t q5(uint8_t v) { return (uint8_t)(v >> 3); }
+static inline uint8_t q5ga(uint8_t v) { return (uint8_t)((v >> 3) << 1); }
 static inline uint8_t q6(uint8_t v) { return (uint8_t)(v >> 2); }
 
-static inline void ssd1331_send_color(uint8_t r8, uint8_t g8, uint8_t b8) {
-    ssd1331_spi_send(q5(r8));
+static inline void ssd1331_send_ga_color(uint8_t r8, uint8_t g8, uint8_t b8) {
+    ssd1331_spi_send(q5ga(r8));
     ssd1331_spi_send(q6(g8));
-    ssd1331_spi_send(q5(b8));
+    ssd1331_spi_send(q5ga(b8));
+}
+
+static inline void _ssd1331_send_color(uint8_t r5, uint8_t g6, uint8_t b5) {
+    ssd1331_spi_send((r5 << 3) | ((g6 >> 3) & 0x07));
+    ssd1331_spi_send(((g6 & 0x07) << 5) | b5);
+}
+
+static inline void ssd1331_send_color(uint8_t r8, uint8_t g8, uint8_t b8) {
+    uint8_t r5 = q5(r8);
+    uint8_t g6 = q6(g8);
+    uint8_t b5 = q5(b8);
+    _ssd1331_send_color(r5, g6, b5);
+}
+
+static inline void ssd1331_send_vec3(_vec3 v) {
+    uint8_t r5 = q5(v.x * 255.f);
+    uint8_t g6 = q6(v.y * 255.f);
+    uint8_t b5 = q5(v.z * 255.f);
+    _ssd1331_send_color(r5, g6, b5);
 }
 
 /* ---------------- Pixel streaming helpers (DC=1 only for pixel bytes) ---------------- */
@@ -167,7 +191,7 @@ static inline void ssd1331_stream_byte(uint8_t b)   { ssd1331_spi_send(b); }
 static inline void ssd1331_stream_end(void)         { ssd1331_cs_deassert(); }
 
 /* ---------------- Address window (params with DC=0) ---------------- */
-_fast static void ssd1331_set_addr_window(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+static void ssd1331_set_addr_window(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
     uint8_t x1 = x;
     uint8_t y1 = y;
     uint8_t x2 = (uint8_t)((x + w - 1 > 95) ? 95 : (x + w - 1));
@@ -228,7 +252,7 @@ static void ssd1331_shutdown(void) {
 }
 
 /* ---------------- GAC Drawing Helpers ---------------- */
-_fast static void fill_solid(uint8_t r, uint8_t g, uint8_t b) {
+static void fill_solid(uint8_t r, uint8_t g, uint8_t b) {
     ssd1331_cmd2(SSD1331_FILL_ENABLE, 0x01, 0x00);
 
     ssd1331_dc_cmd();
@@ -239,13 +263,13 @@ _fast static void fill_solid(uint8_t r, uint8_t g, uint8_t b) {
     ssd1331_spi_send(SSD1331_WIDTH - 1);
     ssd1331_spi_send(SSD1331_HEIGHT - 1);
 
-    ssd1331_send_color(r, g, b);
-    ssd1331_send_color(r, g, b);
+    ssd1331_send_ga_color(r, g, b);
+    ssd1331_send_ga_color(r, g, b);
 
     ssd1331_cs_deassert();
 }
 
-_fast static void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t r, uint8_t g, uint8_t b) {
+static void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t r, uint8_t g, uint8_t b) {
     ssd1331_cmd2(SSD1331_FILL_ENABLE, 0x01, 0x00);
 
     uint8_t x2 = (uint8_t)((x + w - 1 > (SSD1331_WIDTH - 1))
@@ -261,8 +285,8 @@ _fast static void draw_filled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, u
     ssd1331_spi_send(x2);
     ssd1331_spi_send(y2);
 
-    ssd1331_send_color(r, g, b);
-    ssd1331_send_color(r, g, b);
+    ssd1331_send_ga_color(r, g, b);
+    ssd1331_send_ga_color(r, g, b);
 
     ssd1331_cs_deassert();
 }
@@ -275,6 +299,6 @@ static inline void draw_line_color(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y
     ssd1331_spi_send(y0);
     ssd1331_spi_send(x1);
     ssd1331_spi_send(y1);
-    ssd1331_send_color(r, g, b);
+    ssd1331_send_ga_color(r, g, b);
     ssd1331_cs_deassert();
 }
