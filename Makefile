@@ -9,8 +9,9 @@ BLD     := _build/programs
 
 ARCH    := rv32i
 ABI     := ilp32
-CFLAGS  := -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-pic -O3 \
-           -ffunction-sections -fdata-sections -I$(SRC_DIR)/include
+CFLAGS  := -march=$(ARCH) -mabi=$(ABI) -ffreestanding -fno-pic -O2 -flto=auto \
+		   -fmerge-constants -fno-unroll-loops -fno-tree-vectorize \
+           -ffunction-sections -fdata-sections -ffast-math -I$(SRC_DIR)/include
 LDFLAGS := -march=$(ARCH) -mabi=$(ABI) -T default.ld -nostartfiles -nostdlib \
            -Wl,--gc-sections
 
@@ -31,7 +32,7 @@ $(BLD)/%.o: $(SRC_DIR)/%.c | $(BLD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BLD)/%.elf: $(BLD)/%.o $(BLD)/init.o
-	$(CC) $(LDFLAGS) $(BLD)/init.o $< -lgcc -o $@
+	$(CC) $(LDFLAGS) -Wl,--start-group $(BLD)/init.o $< -lgcc -Wl,--end-group -o $@
 
 $(BLD)/%.bin: $(BLD)/%.elf
 	$(OBJCOPY) -O binary $< $@
