@@ -41,14 +41,6 @@ static inline int32_t fxp_abs_s(int32_t x) {
     return (x ^ m) - m;
 }
 
-static inline fxp32_t fxp_add(fxp32_t a, fxp32_t b) {
-    return a + b;
-}
-
-static inline fxp32_t fxp_sub(fxp32_t a, fxp32_t b) {
-    return a - b;
-}
-
 static inline fxp32_t fxp_mul(fxp32_t a, fxp32_t b) {
     int64_t p = (int64_t)a * (int64_t)b;
     return (fxp32_t)(p >> FRAC_BITS);
