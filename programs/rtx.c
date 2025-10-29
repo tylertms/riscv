@@ -33,7 +33,7 @@ _fast int main(void) {
                 .dir = {dir_x, dir_y, dir_z}
             };
 
-            ssd1331_send_vec3(ray.dir);
+            ssd1331_send_vec3(normalize(ray.dir));
         }
     }
 
