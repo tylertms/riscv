@@ -4,25 +4,29 @@ MEMORY {
 }
 ENTRY(_start)
 SECTIONS {
-  .text : {
-    . = ALIGN(4);
-    */programs/init/init.o(.text*)
-    *(.eh_frame_hdr) *(.eh_frame) *(.gcc_except_table*)
-    KEEP(*(.init_array .init_array.*))
-    *(EXCLUDE_FILE(*/libgcc.a:*.o) .text .text.*)
-    . = ALIGN(4);
-    _etext  = .;
-    _sidata = _etext;
+  .init.entry 0x00810000 : {
+    KEEP(*(.text.init.entry))
   } > FLASH
 
   .fast : ALIGN(4) {
     _sfast = .;
     KEEP(*(.fast .fast.*))
-    */libgcc.a:*.o(.text .text.*)
+    *libgcc.a:*(.text .text.*)
     . = ALIGN(4);
     _efast = .;
   } > RAM AT > FLASH
   _sfast_load = LOADADDR(.fast);
+
+  .text : {
+    . = ALIGN(4);
+    */programs/init/init.o(.text*)
+    *(.eh_frame_hdr) *(.eh_frame) *(.gcc_except_table*)
+    KEEP(*(.init_array .init_array.*))
+    *(.text .text.*)
+    . = ALIGN(4);
+    _etext = .;
+    _sidata = _etext;
+  } > FLASH
 
   .data : ALIGN(4) {
     _sdata = .;

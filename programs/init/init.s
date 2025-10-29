@@ -1,6 +1,6 @@
 .equ IO_BASE, 0x400000
 
-.text
+.section .text.init.entry,"ax",@progbits
 .global _start
 .type _start, @function
 
