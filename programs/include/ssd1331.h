@@ -2,11 +2,12 @@
 #include "go-board.h"
 #include "vec3.h"
 #include "math.h"
+#include "fxp.h"
 
 /* ---------------- Screen Definitions ---------------- */
 #define SSD1331_WIDTH 96u
 #define SSD1331_HEIGHT 64u
-#define SSD1331_ASPECT_RATIO 1.5f
+#define SSD1331_ASPECT_RATIO ((fxp32_t)98304)
 #define SSD1331_PIXEL_COUNT (SSD1331_WIDTH * SSD1331_HEIGHT)
 
 /* ---------------- PMOD/OLED bits ---------------- */
@@ -172,10 +173,18 @@ static inline void ssd1331_send_color(uint8_t r8, uint8_t g8, uint8_t b8) {
     _ssd1331_send_color(r5, g6, b5);
 }
 
+static inline uint8_t clamp_u8(int32_t v) {
+    return v < 0 ? 0 : v > 255 ? 255 : (uint8_t)v;
+}
+
 static inline void ssd1331_send_vec3(_vec3 v) {
-    uint8_t r5 = q5(v.x * 255.f);
-    uint8_t g6 = q6(v.y * 255.f);
-    uint8_t b5 = q5(v.z * 255.f);
+    int32_t r = fxp_to_int32(v.x * 255);
+    int32_t g = fxp_to_int32(v.y * 255);
+    int32_t b = fxp_to_int32(v.z * 255);
+
+    uint8_t r5 = q5(clamp_u8(r));
+    uint8_t g6 = q6(clamp_u8(g));
+    uint8_t b5 = q5(clamp_u8(b));
     _ssd1331_send_color(r5, g6, b5);
 }
 
