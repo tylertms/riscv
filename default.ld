@@ -22,7 +22,7 @@ SECTIONS {
     */programs/init/init.o(.text*)
     *(.eh_frame_hdr) *(.eh_frame) *(.gcc_except_table*)
     KEEP(*(.init_array .init_array.*))
-    *(.text .text.*)
+    KEEP(*(.text .text.*))
     . = ALIGN(4);
     _etext = .;
     _sidata = _etext;
