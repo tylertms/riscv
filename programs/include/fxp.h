@@ -3,6 +3,7 @@
 #include "go-board.h"
 
 #define FRAC_BITS 16u
+#define FRAC_MASK ((1 << FRAC_BITS) - 1)
 #define FXP_ONE  ((fxp32_t)(1 << FRAC_BITS))
 #define FXP_ZERO ((fxp32_t)0)
 
@@ -36,8 +37,8 @@ static inline fxp32_t fxp_clamp(fxp32_t x, fxp32_t lo, fxp32_t hi) {
     return fxp_min(fxp_max(x, lo), hi);
 }
 
-static inline int32_t fxp_abs_s(int32_t x) {
-    int32_t m = x >> 31;
+static inline fxp32_t fxp_abs(fxp32_t x) {
+    fxp32_t m = x >> 31;
     return (x ^ m) - m;
 }
 
