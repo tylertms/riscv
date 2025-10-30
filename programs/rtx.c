@@ -9,8 +9,8 @@
 #define NUM_SPHERES 2
 #define NUM_PLANES 5
 #define DIST_MIN (fxp32_t)(FXP_ONE / 10000)
-#define RAYS_PER_PIXEL 4
-#define MAX_BOUNCES 1024
+#define RAYS_PER_PIXEL 1024
+#define MAX_BOUNCES 4
 
 typedef struct _ray {
     _vec3 origin, dir;
