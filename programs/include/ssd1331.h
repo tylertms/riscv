@@ -7,7 +7,6 @@
 /* ---------------- Screen Definitions ---------------- */
 #define SSD1331_WIDTH 96u
 #define SSD1331_HEIGHT 64u
-#define SSD1331_ASPECT_RATIO ((fxp32_t)98304)
 #define SSD1331_PIXEL_COUNT (SSD1331_WIDTH * SSD1331_HEIGHT)
 
 /* ---------------- PMOD/OLED bits ---------------- */
@@ -178,14 +177,10 @@ static inline uint8_t clamp_u8(int32_t v) {
 }
 
 static inline void ssd1331_send_vec3(_vec3 v) {
-    int32_t r = fxp_to_int32(v.x * 255);
-    int32_t g = fxp_to_int32(v.y * 255);
-    int32_t b = fxp_to_int32(v.z * 255);
-
-    uint8_t r5 = q5(clamp_u8(r));
-    uint8_t g6 = q6(clamp_u8(g));
-    uint8_t b5 = q5(clamp_u8(b));
-    _ssd1331_send_color(r5, g6, b5);
+    int32_t r = fxp_clamp(v.x * 255, 0, 255 << FRAC_BITS) >> FRAC_BITS;
+    int32_t g = fxp_clamp(v.y * 255, 0, 255 << FRAC_BITS) >> FRAC_BITS;
+    int32_t b = fxp_clamp(v.z * 255, 0, 255 << FRAC_BITS) >> FRAC_BITS;
+    _ssd1331_send_color(q5(r), q6(g), q5(b));
 }
 
 /* ---------------- Pixel streaming helpers (DC=1 only for pixel bytes) ---------------- */
