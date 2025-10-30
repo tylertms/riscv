@@ -1,12 +1,7 @@
 #include <go-board.h>
+#include <random.h>
 
 #define TOTAL 10000000u // 10M
-
-_fast uint32_t random(uint32_t* state) {
-    *state = *state * 747796405u + 2891336453u;
-    uint32_t word = ((*state >> ((*state >> 28u) + 4u)) ^ *state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
 
 _fast int main(void) {
     uint32_t state = 0;
@@ -27,7 +22,7 @@ _fast int main(void) {
             next_event += step;
         }
 
-        state = random(&state);
+        state = random32();
     }
 
     IO_OUT(IO_SEG_ONE, to_seg((state / 10) % 10));
