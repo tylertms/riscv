@@ -34,6 +34,11 @@ After a change to C (`programs/`)
 make <program_name>.prog
 ```
 
+Generate a report for a program
+```
+make <program_name>.report
+# Generates an overview of code sections and the placement of functions/data (RAM/FLASH)
+```
 
 ## Datasheets / Resources:
 #### RISC-V Implementation:
