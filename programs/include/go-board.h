@@ -3,10 +3,12 @@
 
 #if defined(__ELF__) && (defined(__riscv) || defined(__riscv_xlen))
   #define _fast __attribute__((section(".fast"), noinline))
-  #define _text __attribute__((section(".text")))
+  #define _text __attribute__((section(".text"), noinline))
+  #define _rodata __attribute__((section(".rodata")))
 #else
   #define _fast
   #define _text
+  #define _rodata
 #endif
 
 /* ========================= MMIO ========================= */

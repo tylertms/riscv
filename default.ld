@@ -23,6 +23,9 @@ SECTIONS {
     *(.eh_frame_hdr) *(.eh_frame) *(.gcc_except_table*)
     KEEP(*(.init_array .init_array.*))
     KEEP(*(.text .text.*))
+
+    *(.rodata .rodata.* .srodata .srodata.*)
+
     . = ALIGN(4);
     _etext = .;
     _sidata = _etext;
@@ -31,7 +34,6 @@ SECTIONS {
   .data : ALIGN(4) {
     _sdata = .;
     *(.data .data.* .sdata .sdata.*)
-    *(.rodata .rodata.* .srodata .srodata.*)
     . = ALIGN(4);
     _edata = .;
   } > RAM AT > FLASH
