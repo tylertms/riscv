@@ -12,12 +12,14 @@ _fast int main(void) {
         // Using the compiler's / and % routines
         IO_OUT(IO_SEG_ONE, to_seg((num / 10) % 10));
         IO_OUT(IO_SEG_TWO, to_seg(num % 10));
-
-        // Wait for SW3 to be pressed
-        while (~IO_IN(IO_SW) & PIN_SW3);
+        IO_OUT(IO_LEDS, num & 0x0F);
 
         // Increment num (mod 100);
         num = (num == 99) ? 0 : (num + 1);
+        delay_ms(100);
+
+        // Wait for SW3 to be pressed
+        while (~IO_IN(IO_SW) & PIN_SW3);
     }
 
     // jump back to init.s, stay in infinite loop
