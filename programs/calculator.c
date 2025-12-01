@@ -15,7 +15,7 @@ _fast int main(void)
         }
         if (IO_IN(IO_SW) & PIN_SW2)
         {
-            value--:
+            value--;
         }
         if (IO_IN(IO_SW) & PIN_SW3)
         {
