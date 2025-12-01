@@ -25,8 +25,11 @@ _fast int main(void)
         {
             value = value << 1;
         }
-        IO_OUT(IO_SEG_TWO, to_seg(value));
+
+        IO_OUT(IO_SEG_ONE, to_seg((value >> 4) & 0xF));
+        IO_OUT(IO_SEG_TWO, to_seg(value & 0xF));
+
+        delay_ms(100);
     }
-    delay_ms(1500);
     return 0;
 }
