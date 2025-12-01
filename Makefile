@@ -39,7 +39,7 @@ $(BLD)/%.bin: $(BLD)/%.elf
 	$(OBJCOPY) -O binary $< $@
 
 %.prog: $(BLD)/%.bin
-	iceprog -d i:$(DEVICE) -o 64k $<
+	iceprog -d i:$(DEVICE) -o 64k -i 64 $<
 
 %.report: $(BLD)/%.elf
 	@echo "=== REPORT for $* ==="; echo; \
