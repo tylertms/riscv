@@ -40,6 +40,11 @@ make <program_name>.report
 # Generates an overview of code sections and the placement of functions/data (RAM/FLASH)
 ```
 
+## Screenshots
+The result of `rtx.c`:
+
+<img src="./screenshots/rtx.png" width="256">
+
 ## Datasheets / Resources:
 #### RISC-V Implementation:
 - https://five-embeddev.com/riscv-user-isa-manual/Priv-v1.12/rv32.html
